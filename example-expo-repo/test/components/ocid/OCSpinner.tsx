@@ -7,11 +7,15 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 import React from 'react';
 import { ActivityIndicator, View, StyleSheet, Image } from 'react-native';
 
-const OCSpinner = ({ width = 80, height = 80 }) => {
+interface OCSpinnerProps {
+    width?: number;
+    height?: number;
+}
+
+const OCSpinner: React.FC<OCSpinnerProps> = ({ width = 80, height = 80 }) => {
     return (
         <View style={[styles.container, { width, height }]}>
             <ActivityIndicator size="large" color="#1A1AEB" style={styles.spinner} />

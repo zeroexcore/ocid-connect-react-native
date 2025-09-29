@@ -9,7 +9,7 @@
  */
 
 import { InternalError } from "../utils/errors";
-import { CookieStorageProvider } from "./CookieStorageProvider";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class SavedObject
 {
@@ -22,24 +22,25 @@ class SavedObject
         this.storageName = storageName;
     }
 
-    getItem ( key )
+    async getItem ( key )
     {
-        return this.getStorage()[ key ];
+        const storage = await this.getStorage();
+        return storage[ key ];
     }
 
-    setItem ( key, value )
+    async setItem ( key, value )
     {
-        return this.updateStorage( key, value );
+        return await this.updateStorage( key, value );
     }
 
-    removeItem ( key )
+    async removeItem ( key )
     {
-        return this.clearStorage( key );
+        return await this.clearStorage( key );
     }
 
-    getStorage ()
+    async getStorage ()
     {
-        let storageString = this.storageProvider.getItem( this.storageName );
+        let storageString = await this.storageProvider.getItem( this.storageName );
         storageString = storageString || '{}';
         try
         {
@@ -50,38 +51,37 @@ class SavedObject
         }
     }
 
-    setStorage ( obj )
+    async setStorage ( obj )
     {
         try
         {
             let storageString = obj ? JSON.stringify( obj ) : '{}';
-            this.storageProvider.setItem( this.storageName, storageString );
+            await this.storageProvider.setItem( this.storageName, storageString );
         } catch ( e )
         {
             throw new Error( 'Unable to set storage: ' + this.storageName );
         }
     }
 
-    clearStorage ( key )
+    async clearStorage ( key )
     {
         if ( !key )
         {
             // clear all
-            this.storageProvider.removeItem( this.storageName );
-
+            await this.storageProvider.removeItem( this.storageName );
             return;
         }
 
-        let obj = this.getStorage();
+        let obj = await this.getStorage();
         delete obj[ key ];
-        this.setStorage( obj );
+        await this.setStorage( obj );
     }
 
-    updateStorage ( key, value )
+    async updateStorage ( key, value )
     {
-        let obj = this.getStorage();
+        let obj = await this.getStorage();
         obj[ key ] = value;
-        this.setStorage( obj );
+        await this.setStorage( obj );
     }
 }
 
@@ -101,23 +101,14 @@ export class BaseStorageManager
     }
 }
 
-export class LocalStorageManager extends BaseStorageManager
+export class AsyncStorageManager extends BaseStorageManager
 {
     constructor ( storageName )
     {
-        super( storageName, window.localStorage );
+        super( storageName, AsyncStorage );
     }
 }
 
 export const getStorageClass = (opts) => {
-    // Only cookie support domain based storage
-    if (opts.storageType === 'cookie') {
-        return class CookieStorageManager extends BaseStorageManager {
-            constructor ( storageName ) {
-                super( storageName, new CookieStorageProvider(opts) );
-            }
-        }
-    } else { 
-        return LocalStorageManager;
-    }
+    return AsyncStorageManager;
 }

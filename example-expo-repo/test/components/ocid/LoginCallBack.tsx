@@ -14,7 +14,21 @@ import { useOCAuth } from './OCContext';
 
 let handledRedirect = false;
 
-const LoginCallBack = ({ url, successCallback, errorCallback, customErrorComponent, customLoadingComponent }) => {
+interface LoginCallBackProps {
+    url: string;
+    successCallback?: () => void;
+    errorCallback?: (error: any) => void;
+    customErrorComponent?: React.ReactNode;
+    customLoadingComponent?: React.ReactNode;
+}
+
+const LoginCallBack: React.FC<LoginCallBackProps> = ({ 
+    url, 
+    successCallback, 
+    errorCallback, 
+    customErrorComponent, 
+    customLoadingComponent 
+}) => {
     const { isInitialized, ocAuth, authState, setAuthError } = useOCAuth();
 
     useEffect(() => {
@@ -35,9 +49,9 @@ const LoginCallBack = ({ url, successCallback, errorCallback, customErrorCompone
             handleLogin();
             handledRedirect = true;
         }
-    }, [ocAuth, url]);
+    }, [ocAuth, url, successCallback, errorCallback, setAuthError]);
 
-    if (isInitialized && authState.error !== undefined && !errorCallback) {
+    if (isInitialized && authState?.error !== undefined && !errorCallback) {
         return customErrorComponent ? customErrorComponent : (
             <View style={styles.container}>
                 <Text style={styles.errorText}>Error Logging in: {authState.error.message}</Text>

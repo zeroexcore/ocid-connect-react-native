@@ -28,24 +28,24 @@ class TransactionManager
     }
 
     // called when we start a new transaction
-    clear ()
+    async clear ()
     {
-        this.storageManager.getStorageObject().clearStorage();
+        await this.storageManager.getStorageObject().clearStorage();
     }
 
-    save ( meta )
+    async save ( meta )
     {
-        this.storageManager.getStorageObject().setStorage( meta );
+        await this.storageManager.getStorageObject().setStorage( meta );
     }
 
-    getTransactionMeta ()
+    async getTransactionMeta ()
     {
-        return this.storageManager.getStorageObject().getStorage();
+        return await this.storageManager.getStorageObject().getStorage();
     }
 
-    hasActiveTransaction ()
+    async hasActiveTransaction ()
     {
-        const meta = this.storageManager.getStorageObject();
+        const meta = await this.storageManager.getStorageObject().getStorage();
 
         return !!meta.codeChallenge && !!meta.codeVerifier;
     }

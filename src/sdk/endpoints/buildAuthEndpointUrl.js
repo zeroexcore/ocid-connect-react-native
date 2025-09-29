@@ -10,7 +10,8 @@
 export const buildAuthEndpointUrl = (signInParams, loginEndPoint) => {
     const loginUrl = new URL(loginEndPoint);
     loginUrl.searchParams.append('client_id', signInParams.clientId);
-    loginUrl.searchParams.append('origin_url', window.location.href);
+    // For React Native, we don't have window.location.href, so we'll use the redirect URI as the origin
+    loginUrl.searchParams.append('origin_url', signInParams.redirectUri);
     loginUrl.searchParams.append('redirect_uri', signInParams.redirectUri);
     loginUrl.searchParams.append('response_type', signInParams.responseType);
     loginUrl.searchParams.append('scope', signInParams.scope);

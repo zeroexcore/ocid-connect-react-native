@@ -34,12 +34,30 @@ const themes = {
     },
 };
 
-export default function LoginButton({ pill, disabled, theme = 'ocBlue', state }) {
+interface LoginButtonProps {
+    pill?: boolean;
+    disabled?: boolean;
+    theme?: keyof typeof themes;
+    state?: string;
+}
+
+export default function LoginButton({ pill, disabled, theme = 'ocBlue', state }: LoginButtonProps) {
     const { ocAuth } = useOCAuth();
     const selectedTheme = themes[theme] || themes.ocBlue;
 
     const loginWithRedirect = async () => {
-        await ocAuth.signInWithRedirect({ state });
+        if (ocAuth) {
+            try {
+                await ocAuth.signInWithRedirect({ state });
+            } catch (error: any) {
+                if (error.message.includes('SANDBOX_VERIFICATION_REQUIRED')) {
+                    // Handle sandbox verification error gracefully
+                    console.warn('Sandbox verification required:', error.message);
+                } else {
+                    throw error; // Re-throw other errors
+                }
+            }
+        }
     };
 
     const buttonStyle = [

@@ -8,34 +8,8 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import React from 'react';
-import { ActivityIndicator, View, StyleSheet, Image } from 'react-native';
-
-const OCSpinner = ({ width = 80, height = 80 }) => {
-    return (
-        <View style={[styles.container, { width, height }]}>
-            <ActivityIndicator size="large" color="#1A1AEB" style={styles.spinner} />
-            <Image
-                source={{ uri: 'https://static.opencampus.xyz/assets/oc_logo.svg' }}
-                style={[styles.logo, { width: width * 0.7, height: height * 0.7 }]}
-                resizeMode="contain"
-            />
-        </View>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    spinner: {
-        position: 'absolute',
-    },
-    logo: {
-        position: 'absolute',
-    },
-});
-
-export default OCSpinner;
+export { default as OCConnect } from './OCConnect';
+export { default as LoginButton } from './LoginButton';
+export { default as LoginCallBack } from './LoginCallBack';
+export { default as OCSpinner } from './OCSpinner';
+export { OCContext, useOCAuth } from './OCContext';

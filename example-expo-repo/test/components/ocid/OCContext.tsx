@@ -7,14 +7,24 @@
 * 
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-export const parseUrl = () => {
-    const queryString = window.location.search;
-    const urlParams = new URLSearchParams(queryString);
-    const validParams = {};
+import * as React from 'react';
 
-    if (urlParams.has('id_token')) validParams.id_token = urlParams.get('id_token');
-    if (urlParams.has('code')) validParams.code = urlParams.get('code');
-    if (urlParams.has('state')) validParams.state = urlParams.get('state');
+interface OCAuthContextType {
+  OCId?: string;
+  ethAddress?: string;
+  ocAuth?: any;
+  authState?: any;
+  authError?: any;
+  isInitialized: boolean;
+  setAuthError: (error: any) => void;
+}
 
-    return validParams;
+export const OCContext = React.createContext<OCAuthContextType | null>(null);
+
+export const useOCAuth = (): OCAuthContextType => {
+  const context = React.useContext(OCContext);
+  if (!context) {
+    throw new Error('useOCAuth must be used within an OCConnect provider');
+  }
+  return context;
 };

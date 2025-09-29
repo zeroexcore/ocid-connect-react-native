@@ -11,9 +11,11 @@ import AuthInfoManager from './lib/AuthInfoManager';
 import TokenManager from './lib/TokenManager';
 import TransactionManager from './lib/TransactionManager';
 import { getStorageClass } from './lib/StorageManager';
-import { createPkceMeta, parseJwt, parseUrl, prepareTokenParams } from './utils';
+import { createPkceMeta, parseJwt, prepareTokenParams } from './utils';
 import { buildAuthEndpointUrl } from './endpoints';
 import { AuthError, InvalidParamsError } from './utils/errors';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 
 export class OCAuthCore {
     clientId;
@@ -24,6 +26,7 @@ export class OCAuthCore {
     loginEndPoint;
     logoutEndPoint;
     referralCode;
+    initialized;
 
     constructor(clientId, loginEndpoint, redirectUri, transactionManager, tokenManager, referralCode, logoutEndPoint) {
         if (!clientId) {
@@ -37,21 +40,30 @@ export class OCAuthCore {
         this.redirectUri = redirectUri;
         this.referralCode = referralCode;
         this.clientId = clientId;
-        this.syncAuthInfo();
+        this.initialized = false;
     }
 
-    clearStorage() {
-        this.transactionManager.clear();
-        this.tokenManager.clear();
+    async initialize() {
+        if (!this.initialized) {
+            await this.syncAuthInfo();
+            this.initialized = true;
+        }
+    }
+
+    async clearStorage() {
+        await this.tokenManager.clear();
+        await this.transactionManager.clear();
     }
 
     async logout(logoutReturnTo) {
-        this.clearStorage();
-        const url = new URL(this.logoutEndPoint);
-        if (logoutReturnTo) {
-            url.searchParams.append('returnTo', logoutReturnTo);
-        }
-        window.location.assign(url.toString());
+        // Clear local storage and auth state
+        await this.clearStorage();
+        // Clear auth info manager state to trigger UI updates
+        this.authInfoManager.clear();
+        
+        // In React Native, we don't need to visit external logout endpoint
+        // The local session is cleared and that's sufficient
+        console.log('Logout successful - local session cleared');
     }
 
     async signInWithRedirect(params) {
@@ -62,25 +74,37 @@ export class OCAuthCore {
         paramsClone.clientId = this.clientId;
         const signinParams = await prepareTokenParams(paramsClone);
         const meta = createPkceMeta(signinParams);
-        this.transactionManager.save(meta);
+        await this.transactionManager.save(meta);
         signinParams.referralCode = this.referralCode;
         const requestUrl = buildAuthEndpointUrl(signinParams, this.loginEndPoint);
-        window.location.assign(requestUrl);
+        
+        // Open in-app browser and wait for redirect
+        const result = await WebBrowser.openAuthSessionAsync(requestUrl, this.redirectUri);
+        
+        if (result.type === 'success' && result.url) {
+            // Handle the callback directly
+            return await this.handleLoginRedirect(result.url);
+        } else if (result.type === 'cancel') {
+            throw new AuthError('Authentication was cancelled');
+        } else {
+            throw new AuthError('Authentication failed');
+        }
     }
 
-    async handleLoginRedirect() {
-        const urlParams = parseUrl();
+    async handleLoginRedirect(url) {
+        // For React Native, URL will be passed from deep link handler
+        const urlParams = this.parseUrlFromString(url);
         // Again we only handle PKCE code flow
         if (urlParams.code) {
-            const meta = this.transactionManager.getTransactionMeta();
+            const meta = await this.transactionManager.getTransactionMeta();
             const { codeVerifier } = meta;
             if (codeVerifier) {
                 // we used pkce mode, use it
                 await this.tokenManager.exchangeTokenFromCode(urlParams.code, codeVerifier, urlParams.state);
                 // clear transaction meta, coz it's completed
-                this.transactionManager.clear();
-                this.syncAuthInfo();
-                return this.getAuthState();
+                await this.transactionManager.clear();
+                await this.syncAuthInfo();
+                return await this.getAuthState();
             } else {
                 throw new AuthError('codeVerifier not found, cannot complete flow');
             }
@@ -90,19 +114,36 @@ export class OCAuthCore {
         return {};
     }
 
-    isAuthenticated() {
-        // if both token exist and not expired
-        return !this.tokenManager.hasExpired();
+    parseUrlFromString(urlString) {
+        if (!urlString) return {};
+        try {
+            const url = new URL(urlString);
+            const urlParams = new URLSearchParams(url.search);
+            const validParams = {};
+            
+            if (urlParams.has('id_token')) validParams.id_token = urlParams.get('id_token');
+            if (urlParams.has('code')) validParams.code = urlParams.get('code');
+            if (urlParams.has('state')) validParams.state = urlParams.get('state');
+            
+            return validParams;
+        } catch (e) {
+            return {};
+        }
     }
 
-    syncAuthInfo() {
-        if (this.tokenManager.hasExpired()) {
+    async isAuthenticated() {
+        // if both token exist and not expired
+        return !(await this.tokenManager.hasExpired());
+    }
+
+    async syncAuthInfo() {
+        if (await this.tokenManager.hasExpired()) {
             this.authInfoManager.clear();
         } else {
-            const { edu_username, eth_address } = this.getParsedIdToken();
+            const { edu_username, eth_address } = await this.getParsedIdToken();
             this.authInfoManager.setAuthState(
-                this.getAccessToken(),
-                this.getIdToken(),
+                await this.getAccessToken(),
+                await this.getIdToken(),
                 edu_username,
                 eth_address,
                 true
@@ -114,30 +155,30 @@ export class OCAuthCore {
         return this.authInfoManager.getAuthState();
     }
 
-    getStateParameter() {
-        return this.tokenManager.getStateParameter();
+    async getStateParameter() {
+        return await this.tokenManager.getStateParameter();
     }
 
-    getIdToken() {
-        return this.tokenManager.getIdToken();
+    async getIdToken() {
+        return await this.tokenManager.getIdToken();
     }
 
-    getAccessToken() {
-        return this.tokenManager.getAccessToken();
+    async getAccessToken() {
+        return await this.tokenManager.getAccessToken();
     }
 
-    getParsedIdToken() {
+    async getParsedIdToken() {
         // return all info in id token
-        const idToken = this.tokenManager.getIdToken();
+        const idToken = await this.tokenManager.getIdToken();
         if (idToken) {
             return parseJwt(idToken);
         }
         return {};
     }
 
-    getParsedAccessToken() {
+    async getParsedAccessToken() {
         // return all info in access token
-        const accessToken = this.tokenManager.getAccessToken();
+        const accessToken = await this.tokenManager.getAccessToken();
         if (accessToken) {
             return parseJwt(accessToken);
         }

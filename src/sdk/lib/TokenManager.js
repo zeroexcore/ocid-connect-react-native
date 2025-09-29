@@ -28,14 +28,15 @@ class TokenManager
         this.publicKey = publicKey;
     }
 
-    clear ()
+    async clear ()
     {
-        this.storageManager.getStorageObject().clearStorage();
+        await this.storageManager.getStorageObject().clearStorage();
     }
 
     async exchangeTokenFromCode ( accessCode, codeVerifier, state = null )
     {
         const body = { accessCode, codeVerifier };
+        console.log('Token exchange request:', { endpoint: this.tokenEndPoint, body });
         try
         {
             const response = await fetch( this.tokenEndPoint, {
@@ -46,10 +47,19 @@ class TokenManager
                 body: JSON.stringify( body ),
             } );
 
-            const { access_token, id_token } = await response.json();
+            console.log('Token exchange response status:', response.status);
+            const responseData = await response.json();
+            console.log('Token exchange response data:', responseData);
+            
+            // Handle sandbox verification error specifically
+            if (responseData.error && responseData.error.subType === 'SANDBOX_WALLET_ERROR') {
+                throw new AuthError('SANDBOX_VERIFICATION_REQUIRED: Please create an account at https://id.sandbox.opencampus.xyz/ first');
+            }
+            
+            const { access_token, id_token } = responseData;
             if ( !access_token || !id_token )
             {
-                throw new AuthError( 'Fail to exchange token' );
+                throw new AuthError( 'Fail to exchange token: ' + JSON.stringify(responseData) );
             }
             const pubKey = await this.getPublicKey();
             const tokenVerified = await verifyToken( id_token, pubKey );
@@ -66,7 +76,7 @@ class TokenManager
                 },
                 state && { state }
             );
-            this.storageManager.getStorageObject().setStorage(storageData);
+            await this.storageManager.getStorageObject().setStorage(storageData);
         } catch ( error )
         {
             console.log( error );
@@ -74,24 +84,24 @@ class TokenManager
         }
     }
 
-    getStateParameter ()
+    async getStateParameter ()
     {
-        return this.storageManager.getStorageObject().getItem( 'state' );
+        return await this.storageManager.getStorageObject().getItem( 'state' );
     }
 
-    getIdToken ()
+    async getIdToken ()
     {
-        return this.storageManager.getStorageObject().getItem( 'id_token' );
+        return await this.storageManager.getStorageObject().getItem( 'id_token' );
     }
 
-    getAccessToken ()
+    async getAccessToken ()
     {
-        return this.storageManager.getStorageObject().getItem( 'access_token' );
+        return await this.storageManager.getStorageObject().getItem( 'access_token' );
     }
 
-    getExpiredAt () 
+    async getExpiredAt () 
     {
-        return this.storageManager.getStorageObject().getItem( 'expired' );
+        return await this.storageManager.getStorageObject().getItem( 'expired' );
     }
 
     async getPublicKey () 
@@ -99,9 +109,9 @@ class TokenManager
         return this.publicKey;
     }
 
-    hasExpired ()
+    async hasExpired ()
     {
-        const expiredAt = this.getExpiredAt();
+        const expiredAt = await this.getExpiredAt();
         if ( !expiredAt )
         {
             return true;
