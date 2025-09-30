@@ -1,461 +1,845 @@
+# OCID Connect React Native SDK - Expo Go Integration Guide
+
+A comprehensive guide for integrating the OCID Connect React Native SDK in an Expo Go application, including complete setup, configuration, and implementation examples.
+
 ## Table of Contents
 
-- [Setup](#setup)
-- [React Integration](#react-integration)
-- [Next.js 13+ Integration](#next-js-13+-integration)
-- [Javascript Integration](#javascript-integration)
-- [License](#license)
+1. [Prerequisites](#prerequisites)
+2. [Installation](#installation)
+3. [Expo Configuration](#expo-configuration)
+4. [Project Setup](#project-setup)
+5. [Components Implementation](#components-implementation)
+6. [Authentication Flow](#authentication-flow)
+7. [Complete Example](#complete-example)
+8. [Troubleshooting](#troubleshooting)
 
-## Pre-Requisites
+## Prerequisites
 
-An Auth Client ID is required to use OCID Connect in Live (Production) mode. Please contact your Open Campus Ambassador to request access to an Open Campus Developer Account and Auth Client ID.
-For Live mode integration, you will need to configure the Redirect URIs for you Auth Client and only configured Redirect URIs are allowed to be passed to the SDK.
+### Required Accounts and IDs
 
-You **do not need a Client ID when testing integration in Sandbox mode**. Sandbox mode connect to the sandbox OCID environment which is separate from the production environment. An OCID registered in the sandbox environment does not exist in the production environment and vice versa. Sandbox mode has no restriction for Redirect URIs and hence does not require a Client ID at the moment. Client ID can be passed to the SDK in sandbox mode, but **does not have any effect**.
+- **Sandbox Mode (Development)**: No Client ID required - perfect for testing and development
+- **Live Mode (Production)**: Auth Client ID required - contact your Open Campus Ambassador for access to Developer Account
 
-> If you were onboarded to live integration before Apr 2025 and did not have an Open Campus Developer Account, you would **need to** use the V1.x SDK. Please get in touch with your Open Campus point of contact to get your Open Campus Developer Account and migrate to the V2 SDK. Thanks!
+### Important Notes
 
-## Remark for sandbox mode
+- **Sandbox vs Live**: Sandbox environment is separate from production. OCIDs created in sandbox don't exist in production
+- **Sandbox Verification**: If your OCID is created through sandbox, log in to https://id.sandbox.opencampus.xyz/ to properly initialize it
+- **Client ID**: Only required for live mode, optional for sandbox mode
 
-If your OCID is signed up through sandbox mode, your OCID will not be properly initialized in our system until you log in to https://id.sandbox.opencampus.xyz/.
+## Installation
 
-## Setup
+Install the OCID Connect React Native SDK and required dependencies:
 
-**yarn**
-
-Install dependencies
 ```bash
-yarn install
+# Install the main SDK
+npm install @opencampus/ocid-connect-react-native
+
+# Or with yarn
+yarn add @opencampus/ocid-connect-react-native
+
+# Install peer dependencies
+npm install @react-native-async-storage/async-storage base-64 react-native-get-random-values expo-crypto expo-web-browser expo-auth-session jwt-decode
+
+# Or with yarn
+yarn add @react-native-async-storage/async-storage base-64 react-native-get-random-values expo-crypto expo-web-browser expo-auth-session jwt-decode
 ```
 
-Compile & build project
-```bash
-yarn build
-```
+### Complete Dependencies List
 
-Keep in mind that, if you are test OCID with localhost, it might not be able to run on Mobile Safari due to this limitation: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto
+Based on the example app, here are all the dependencies you'll need in your `package.json`:
 
-## React Integration
-
-Properties that can be overriden
-
-Setup Context to hook up state variables and override configuration
-
-```js
-import { OCConnect } from '@opencampus/ocid-connect-js';
-
-const opts = {
-    clientId: '<Does_Not_Matter_For_Sandbox_mode>',
-    redirectUri: 'http://localhost:3001/redirect',
-    referralCode: 'PARTNER6'
-}
-
-return (
-    <div id='app-root'>
-        <OCConnect opts={opts} sandboxMode={true}>
-            <RouterProvider router={ router } />
-        </OCConnect>
-    </div>
-)
-```
-
-OCConnect Props
-
-| Property | Description |
-| --- | --- |
-| opts | Authentication's properties that can be overriden |
-| sandboxMode | Connect to sandbox if it is set, default to live mode |
-
-opts Properties
-
-| Property | Description |
-| --- | --- |
-| clientId | Your Auth Client ID. Required for live mode, optional for sandbox mode |
-| redirectUri | URL to return after the login process is completed |
-| referralCode | Unique identifiers assigned to partners for tracking during OCID account's registration. |
-| storageType | Storage type to store the auth state. Use cookie if specified as `cookie`. Otherwise if not defined, local storage is used. |
-| domain | Domain to store cookie. Only meaningful if `cookie` type storaged is used. Leave it blank to tell the browser to use the current domain. |
-| sameSite | Specify the SameSite behavior when using cookie as storage. When `true` - SameSite: strict; when `false` - SameSite: None, when not set - default SameSite behavior browser dependent |
-
-Setup LoginCallBack to handle flow's result
-
-```js
-import { LoginCallBack } from '@opencampus/ocid-connect-js';
-
-const loginSuccess = () => {}
-const loginError = () => {}
-
-<Route path="/redirect"
-    element={ <LoginCallBack errorCallback={loginError} successCallback={loginSuccess}  /> }
-/>
-```
-
-It is possible to customize Loading & Error Page
-
-```js
-import { LoginCallBack, useOCAuth } from '@opencampus/ocid-connect-js';
-
-export default function CustomErrorComponent ()
+```json
 {
-    const { authState, ocAuth } = useOCAuth();
-
-    return (
-        <div>Error Logging in: { authState.error.message }</div>
-    );
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@opencampus/ocid-connect-react-native": "^1.0.0",
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "base-64": "^1.0.0",
+    "expo": "~54.0.10",
+    "expo-auth-session": "^7.0.8",
+    "expo-crypto": "~15.0.7",
+    "expo-linking": "~8.0.8",
+    "expo-router": "~6.0.8",
+    "expo-web-browser": "~15.0.7",
+    "jwt-decode": "^3.1.2",
+    "react": "19.1.0",
+    "react-native": "0.81.4",
+    "react-native-get-random-values": "^1.9.0"
+  }
 }
-
-export default function CustomLoadingComponent ()
-{
-    return (
-        <div>Loading....</div>
-    );
-}
-
-<Route path="/redirect"
-    element={
-        <LoginCallBack
-            customErrorComponent={CustomErrorComponent}
-            customLoadingComponent={CustomLoadingComponent}
-            successCallback={loginSuccess} />
-    }
-/>
 ```
 
-1. useOCAuth is a hook that provides credentials (authentication information)
-2. Before using any information from this hook, we need to check isInitialized flag
-3. This is because there's a setup/initialization period where the SDK (software development kit) is getting ready
+## Expo Configuration
 
-Here's an example of how it would work:
+### 1. Configure app.json
 
-```js
-import { useOCAuth } from '@opencampus/ocid-connect-js';
+Update your `app.json` to include the custom URL scheme for deep linking:
 
-const UserTokenPage = (props) => {
-    const { isInitialized, authState, ocAuth, OCId, ethAddress } = useOCAuth();
+```json
+{
+  "expo": {
+    "name": "your-app-name",
+    "slug": "your-app-slug",
+    "version": "1.0.0",
+    "scheme": "yourapp",
+    "linking": {
+      //Add prefix
+      "prefixes": [
+        "yourapp://"
+      ]
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
+```
 
-    if (!isInitialized) {
-        return <div>Loading...</div>;
-    } else if (authState.error !== undefined) {
-        return <div>Error: {authState.error.message}</div>;
-    } else {
-        return (
-            <div>
-                <h4>User Info</h4>
-                <pre>
-                { JSON.stringify(ocAuth.getAuthState(), null, 2) }
-                </pre>
-                <pre>{OCId}</pre>
-                <pre>{ethAddress}</pre>
-            </div>
-        );
-    }
+**Important**: The `scheme` must match your redirect URI configuration.
+
+### 2. Configure Metro (if needed)
+
+Your `metro.config.js` should work with the default Expo configuration:
+
+```javascript
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
+```
+
+## Project Setup
+
+### 1. Import Required Polyfills
+
+At the very top of your app's entry point (usually `App.js` or `index.js`), import the required polyfills:
+
+```javascript
+import 'react-native-get-random-values';
+```
+
+### 2. Define Configuration Constants
+
+Create a configuration file or define constants for your OCID setup:
+
+```javascript
+// constants/ocid.js
+export const OCID_CONFIG = {
+  CLIENT_ID: 'sandbox', // Use 'sandbox' for development, your actual client ID for production
+  REDIRECT_URI: 'yourapp://auth/callback', // Must match your app.json scheme
+  SANDBOX_MODE: true, // Set to false for production
 };
 ```
 
-## Next Js 13+ Integration
+## Components Implementation
 
-Install dependencies
-```bash
-npm install @opencampus/ocid-connect-js
+### 1. Create OCID Components Directory
+
+Create the following component files in your `components/ocid/` directory:
+
+#### `components/ocid/OCContext.tsx`
+
+```typescript
+import * as React from 'react';
+
+interface OCAuthContextType {
+  OCId?: string;
+  ethAddress?: string;
+  ocAuth?: any;
+  authState?: any;
+  authError?: any;
+  isInitialized: boolean;
+  setAuthError: (error: any) => void;
+}
+
+export const OCContext = React.createContext<OCAuthContextType | null>(null);
+
+export const useOCAuth = (): OCAuthContextType => {
+  const context = React.useContext(OCContext);
+  if (!context) {
+    throw new Error('useOCAuth must be used within an OCConnect provider');
+  }
+  return context;
+};
 ```
 
-or
+#### `components/ocid/OCConnect.tsx`
 
-```bash
-yarn add @opencampus/ocid-connect-js
+```typescript
+import React, { useEffect, useState } from 'react';
+import { OCAuthLive, OCAuthSandbox } from '@opencampus/ocid-connect-react-native';
+import { OCContext } from './OCContext';
+
+interface OCConnectProps {
+    children: React.ReactNode;
+    opts: any;
+    sandboxMode?: boolean;
+}
+
+const OCConnect: React.FC<OCConnectProps> = ({ children, opts, sandboxMode }) => {
+    const [ocAuth, setOcAuth] = useState<any>();
+    const [OCId, setOCId] = useState<string>();
+    const [ethAddress, setEthAddress] = useState<string>();
+    const [authState, setAuthState] = useState<any>();
+    const [isInitialized, setIsInitialized] = useState(false);
+    const [authError, setAuthError] = useState(null);
+
+    const updateAuthState = (authState: any) => {
+        setAuthState(authState);
+        setOCId(authState.OCId);
+        setEthAddress(authState.ethAddress);
+    };
+
+    // Initialize SDK
+    useEffect(() => {
+        const initAuth = async () => {
+            const authSdk = sandboxMode ? new OCAuthSandbox(opts) : new OCAuthLive(opts);
+            await authSdk.initialize();
+            updateAuthState(authSdk.getAuthState());
+            setOcAuth(authSdk);
+            setIsInitialized(true);
+        };
+        
+        initAuth();
+    }, [opts, sandboxMode]);
+
+    useEffect(() => {
+        if (ocAuth && ocAuth.authInfoManager) {
+            // Reactively receive updates on auth state changes
+            ocAuth.authInfoManager.subscribe(updateAuthState);
+            return () => {
+                ocAuth.authInfoManager.unsubscribe(updateAuthState);
+            };
+        }
+    }, [ocAuth]);
+
+    return (
+        <OCContext.Provider value={{ OCId, ethAddress, ocAuth, authState, authError, isInitialized, setAuthError }}>
+            {children}
+        </OCContext.Provider>
+    );
+};
+
+export default OCConnect;
 ```
 
-### 1. Create a wrapper component 
+#### `components/ocid/LoginButton.tsx`
 
+```typescript
+import React from 'react';
+import { TouchableOpacity, Text, Image, StyleSheet } from 'react-native';
+import { useOCAuth } from './OCContext';
+
+const themes = {
+    light: {
+        backgroundColor: "#FFF",
+        borderColor: "#DDDDEB", 
+        textColor: "#C5C5D1",
+    },
+    dark: {
+        backgroundColor: "#141414",
+        borderColor: "#DDDDEB",
+        textColor: "#FFFFFF",
+    },
+    neutral: {
+        backgroundColor: "#F5F5F5",
+        borderColor: "#DDDDEB",
+        textColor: "#141414",
+    },
+    ocBlue: {
+        backgroundColor: "#141BEB",
+        borderColor: "#DDDDEB",
+        textColor: "#FFFFFF",
+    },
+};
+
+interface LoginButtonProps {
+    pill?: boolean;
+    disabled?: boolean;
+    theme?: keyof typeof themes;
+    state?: string;
+}
+
+export default function LoginButton({ pill, disabled, theme = 'ocBlue', state }: LoginButtonProps) {
+    const { ocAuth } = useOCAuth();
+    const selectedTheme = themes[theme] || themes.ocBlue;
+
+    const loginWithRedirect = async () => {
+        if (ocAuth) {
+            try {
+                await ocAuth.signInWithRedirect({ state });
+            } catch (error: any) {
+                if (error.message.includes('SANDBOX_VERIFICATION_REQUIRED')) {
+                    // Handle sandbox verification error gracefully
+                    console.warn('Sandbox verification required:', error.message);
+                } else {
+                    throw error;
+                }
+            }
+        }
+    };
+
+    const buttonStyle = [
+        styles.button,
+        {
+            backgroundColor: selectedTheme.backgroundColor,
+            borderColor: selectedTheme.borderColor,
+            borderRadius: pill ? 22 : 8,
+        },
+        disabled && styles.disabled
+    ];
+
+    return (
+        <TouchableOpacity
+            style={buttonStyle}
+            onPress={loginWithRedirect}
+            disabled={disabled}
+        >
+            <Image 
+                source={{ uri: 'https://static.opencampus.xyz/assets/oc_logo.svg' }}
+                style={styles.logo}
+            />
+            <Text style={[styles.text, { color: selectedTheme.textColor }]}>
+                Connect <Text style={styles.bold}>OCID</Text>
+            </Text>
+        </TouchableOpacity>
+    );
+}
+
+const styles = StyleSheet.create({
+    button: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 44,
+        width: 160,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        justifyContent: 'center',
+    },
+    disabled: {
+        opacity: 0.6,
+    },
+    logo: {
+        width: 26,
+        height: 25,
+        marginRight: 10,
+    },
+    text: {
+        fontSize: 14,
+    },
+    bold: {
+        fontWeight: 'bold',
+    },
+});
 ```
-components/OCConnectWrapper.jsx
+
+#### `components/ocid/LoginCallBack.tsx`
+
+```typescript
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import OCSpinner from './OCSpinner';
+import { useOCAuth } from './OCContext';
+
+let handledRedirect = false;
+
+interface LoginCallBackProps {
+    url: string;
+    successCallback?: () => void;
+    errorCallback?: (error: any) => void;
+    customErrorComponent?: React.ReactNode;
+    customLoadingComponent?: React.ReactNode;
+}
+
+const LoginCallBack: React.FC<LoginCallBackProps> = ({ 
+    url, 
+    successCallback, 
+    errorCallback, 
+    customErrorComponent, 
+    customLoadingComponent 
+}) => {
+    const { isInitialized, ocAuth, authState, setAuthError } = useOCAuth();
+
+    useEffect(() => {
+        const handleLogin = async () => {
+            if (ocAuth && url) {
+                try {
+                    await ocAuth.handleLoginRedirect(url);
+                    if (successCallback) successCallback();
+                } catch (e) {
+                    setAuthError(e);
+                    if (errorCallback) {
+                        errorCallback(e);
+                    }
+                }
+            }
+        };
+        if (!handledRedirect) {
+            handleLogin();
+            handledRedirect = true;
+        }
+    }, [ocAuth, url, successCallback, errorCallback, setAuthError]);
+
+    if (isInitialized && authState?.error !== undefined && !errorCallback) {
+        return customErrorComponent ? customErrorComponent : (
+            <View style={styles.container}>
+                <Text style={styles.errorText}>Error Logging in: {authState.error.message}</Text>
+            </View>
+        );
+    } else {
+        return customLoadingComponent ? (
+            customLoadingComponent
+        ) : (
+            <View style={styles.container}>
+                <OCSpinner height={100} width={100} />
+            </View>
+        );
+    }
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    errorText: {
+        fontSize: 16,
+        color: 'red',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+    },
+});
+
+export default LoginCallBack;
 ```
 
-```js
-'use client'
+#### `components/ocid/OCSpinner.tsx`
 
-import { ReactNode } from 'react';
-import { OCConnect, OCConnectProps } from '@opencampus/ocid-connect-js';
+```typescript
+import React from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
+interface OCSpinnerProps {
+    height?: number;
+    width?: number;
+    size?: 'small' | 'large';
+    color?: string;
+}
 
+const OCSpinner: React.FC<OCSpinnerProps> = ({ 
+    height = 50, 
+    width = 50, 
+    size = 'large',
+    color = '#141BEB'
+}) => {
+    return (
+        <View style={[styles.container, { height, width }]}>
+            <ActivityIndicator size={size} color={color} />
+        </View>
+    );
+};
 
-export default function OCConnectWrapper({ children, opts, sandboxMode }) {
+const styles = StyleSheet.create({
+    container: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+});
+
+export default OCSpinner;
+```
+
+#### `components/ocid/index.tsx`
+
+```typescript
+export { default as OCConnect } from './OCConnect';
+export { default as LoginButton } from './LoginButton';
+export { default as LoginCallBack } from './LoginCallBack';
+export { default as OCSpinner } from './OCSpinner';
+export { OCContext, useOCAuth } from './OCContext';
+```
+
+## Authentication Flow
+
+### 1. App Root Setup
+
+Wrap your entire app with the OCConnect provider in your main app component:
+
+```typescript
+// App.tsx or _layout.tsx (for Expo Router)
+import React from 'react';
+import { OCConnect } from './components/ocid';
+import { OCID_CONFIG } from './constants/ocid';
+
+export default function App() {
+  const opts = {
+    clientId: OCID_CONFIG.CLIENT_ID,
+    redirectUri: OCID_CONFIG.REDIRECT_URI,
+  };
+
   return (
-    <OCConnect opts={opts} sandboxMode={sandboxMode}>
-      {children}
+    <OCConnect opts={opts} sandboxMode={OCID_CONFIG.SANDBOX_MODE}>
+      {/* Your app components */}
+      <YourAppContent />
     </OCConnect>
   );
 }
 ```
 
+### 2. Authentication Screen Implementation
 
-### 2. Update the root layout
+Create a complete authentication screen:
 
-```
-app/layout.jsx
-```
+```typescript
+// screens/AuthScreen.tsx
+import React from 'react';
+import { View, StyleSheet, Alert, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { LoginButton, useOCAuth } from '../components/ocid';
 
-```js
-import OCConnectWrapper from '../components/OCConnectWrapper';
+function AuthContent() {
+  const { isInitialized, ocAuth, authState } = useOCAuth();
 
-export default function RootLayout({
-  children,
-}) {
-  const opts = {
-    clientId: '<Does_Not_Matter_For_Sandbox_mode>',    
-    redirectUri: 'http://localhost:3000/redirect', // Adjust this URL
-    referralCode: 'PARTNER6', // Assign partner code
+  const handleLogout = async () => {
+    if (ocAuth) {
+      try {
+        await ocAuth.logout();
+      } catch (error) {
+        console.error('Logout failed:', error);
+        Alert.alert('Error', 'Logout failed');
+      }
+    }
   };
 
+  const isAuthenticated = authState?.isAuthenticated || false;
+
+  // Loading state
+  if (!isInitialized) {
+    return (
+      <View style={styles.container}>
+        <Text>Initializing OCID Connect...</Text>
+      </View>
+    );
+  }
+
   return (
-    <html lang="en">
-      <body>
-        <OCConnectWrapper opts={opts} sandboxMode={true}>
-          {children}
-        </OCConnectWrapper>
-      </body>
-    </html>
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>OCID Connect Demo</Text>
+        
+        <View style={styles.section}>
+          <Text style={styles.subtitle}>Authentication Status</Text>
+          <View style={[styles.statusBadge, isAuthenticated ? styles.authenticated : styles.unauthenticated]}>
+            <Text style={[styles.statusText, isAuthenticated ? styles.authenticatedText : styles.unauthenticatedText]}>
+              {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
+            </Text>
+          </View>
+        </View>
+
+        {isAuthenticated && authState ? (
+          <View style={styles.section}>
+            <Text style={styles.subtitle}>User Information</Text>
+            <View style={styles.userInfo}>
+              <Text style={styles.infoText}>OCID: {authState.OCId || 'N/A'}</Text>
+              <Text style={styles.infoText}>Eth Address: {authState.ethAddress || 'N/A'}</Text>
+              <Text style={styles.infoText}>Authenticated: {authState.isAuthenticated ? 'Yes' : 'No'}</Text>
+            </View>
+            
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.subtitle}>Get Started</Text>
+            <Text style={styles.instructions}>
+              Tap the login button below to start the OCID authentication flow.
+            </Text>
+            
+            <View style={styles.buttonContainer}>
+              <LoginButton
+                theme="ocBlue"
+                pill={true}
+                disabled={false}
+                state={JSON.stringify({ timestamp: Date.now() })}
+              />
+            </View>
+          </View>
+        )}
+      </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  section: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  authenticated: {
+    backgroundColor: '#e8f5e8',
+  },
+  unauthenticated: {
+    backgroundColor: '#ffeaea',
+  },
+  statusText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  authenticatedText: {
+    color: '#2d5a2d',
+  },
+  unauthenticatedText: {
+    color: '#8b2635',
+  },
+  userInfo: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    marginBottom: 4,
+    color: '#495057',
+  },
+  instructions: {
+    marginBottom: 16,
+    lineHeight: 18,
+    color: '#666',
+  },
+  buttonContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  logoutButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  logoutText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+});
+
+export default AuthContent;
 ```
 
-### 3. Create a redirect page
+### 3. Deep Link Handling (Expo Router)
 
-```
-app/redirect/page.jsx
-```
+If you're using Expo Router, create a callback route:
 
-```js
-'use client'
+```typescript
+// app/auth/callback.tsx
+import React, { useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LoginCallBack } from '../../components/ocid';
 
-import { LoginCallBack } from '@opencampus/ocid-connect-js';
-import { useRouter } from 'next/navigation';
-
-export default function RedirectPage() {
+export default function AuthCallback() {
+  const params = useLocalSearchParams();
   const router = useRouter();
+  
+  const url = `yourapp://auth/callback?${new URLSearchParams(params as Record<string, string>).toString()}`;
 
-  const loginSuccess = () => {
-    router.push('/'); // Redirect after successful login
+  const handleSuccess = () => {
+    router.replace('/'); // Navigate to home after successful auth
   };
 
-  const loginError = (error) => {
-    console.error('Login error:', error);
+  const handleError = (error: any) => {
+    console.error('Auth callback error:', error);
+    router.replace('/auth'); // Navigate back to auth screen on error
   };
-
-  function CustomErrorComponent() {
-  const { authState } = useOCAuth();
-  return <div>Error Logging in: {authState.error?.message}</div>;
-  }
-
-  function CustomLoadingComponent() {
-  return <div>Loading....</div>;
-  }
 
   return (
-    <LoginCallBack 
-      errorCallback={loginError} 
-      successCallback={loginSuccess}
-      customErrorComponent={<CustomErrorComponent />}
-      customLoadingComponent={<CustomLoadingComponent />} 
+    <LoginCallBack
+      url={url}
+      successCallback={handleSuccess}
+      errorCallback={handleError}
     />
   );
 }
 ```
 
+## Complete Example
 
+Here's a complete minimal example using Expo Router:
 
-### 4. Create a LoginButton Component
+### `app/_layout.tsx`
 
-```
-components/LoginButton.jsx
-```
+```typescript
+import { Stack } from 'expo-router';
+import { OCConnect } from '../components/ocid';
+import 'react-native-get-random-values';
 
-```js
-'use client'
+const REDIRECT_URI = 'yourapp://auth/callback';
+const CLIENT_ID = 'sandbox';
 
-import { useOCAuth } from '@opencampus/ocid-connect-js';
-
-export default function LoginButton() {
-  const { ocAuth } = useOCAuth();
-
-  const handleLogin = async () => {
-    try {
-      await ocAuth.signInWithRedirect({ state: 'opencampus' });
-    } catch (error) {
-      console.error('Login error:', error);
-    }
+export default function RootLayout() {
+  const opts = {
+    clientId: CLIENT_ID,
+    redirectUri: REDIRECT_URI,
   };
 
-  return <button onClick={handleLogin}>Login</button>;
+  return (
+    <OCConnect opts={opts} sandboxMode={true}>
+      <Stack>
+        <Stack.Screen name="index" options={{ title: 'Home' }} />
+        <Stack.Screen name="auth/callback" options={{ title: 'Authenticating...' }} />
+      </Stack>
+    </OCConnect>
+  );
 }
 ```
 
-### 5. Use Components in Your Page
+### `app/index.tsx`
 
-```
-app/page.jsx
-```
+```typescript
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { LoginButton, useOCAuth } from '../components/ocid';
 
-```js
-
-'use client';
-
-import { useEffect } from 'react';
-import LoginButton from '../components/LoginButton';
-import { useOCAuth } from '@opencampus/ocid-connect-js';
-
-export default function Home() {
+export default function HomeScreen() {
   const { isInitialized, authState, ocAuth } = useOCAuth();
 
-  // Add a loading state
   if (!isInitialized) {
-    return <div>Loading...</div>;
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
   }
 
-  if (authState.error) {
-    return <div>Error: {authState.error.message}</div>;
-  }
+  const isAuthenticated = authState?.isAuthenticated || false;
 
   return (
-    <div>
-      <h1>Welcome to My App</h1>
-      {authState.isAuthenticated ? (
-        <p>You are logged in! {JSON.stringify(ocAuth.getAuthState())}</p>
-        
+    <View style={styles.container}>
+      <Text style={styles.title}>OCID Connect Example</Text>
+      
+      {isAuthenticated ? (
+        <View style={styles.userInfo}>
+          <Text>Welcome! OCID: {authState.OCId}</Text>
+          <Text>Wallet: {authState.ethAddress}</Text>
+        </View>
       ) : (
-        <LoginButton />
+        <View>
+          <Text style={styles.subtitle}>Please login to continue</Text>
+          <LoginButton 
+            theme="ocBlue"
+            pill={true}
+            state="demo"
+          />
+        </View>
       )}
-    </div>
+    </View>
   );
 }
 
-```
-
-
-## Javascript Integration
-If React is not desirable front end framework, Our sdk could be used to integrate seamlessly with others.
-
-Our authentication flow adhere to OIDC Auth Code Flow + PKCE standard.
-
-First and foremost, we could initialize the SDK to use either OCAuthSandbox (testing environment) and OCAuthLive (production environment)
-
-```js
-import { OCAuthSandbox } from '@opencampus/ocid-connect-js';
-const authSdk = new OCAuthSandbox();
-```
-
-In live mode, we need to provide the client id.
-
-```js
-import { OCAuthLive } from '@opencampus/ocid-connect-js';
-const authSdk = new OCAuthLive({
-  clientId: 'your_client_id',
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  userInfo: {
+    alignItems: 'center',
+  },
 });
 ```
 
-Main Methods of Auth SDK
+## Troubleshooting
 
-| Method | Description |
-| --- | --- |
-| signInWithRedirect | Initialize login process. Accept "state" as an input |
-| handleLoginRedirect | Return the auth state of the login process |
-| getAuthState | Return auth state data { accessToken, idToken, OCId, ethAddress, isAuthenticated } |
-| getStateParameter() | Return the state that was initialized in signin process |
-| logout() | Logout the current user. Accept "returnUrl" as an input so user can be redirected to the app after logout |
+### Common Issues
 
-Sample usage
+1. **Deep Link Not Working**
+   - Verify your `app.json` scheme matches your redirect URI
+   - Ensure you're testing on a physical device or using Expo Go correctly
 
-```js
-import { OCAuthSandbox } from '@opencampus/ocid-connect-js';
+2. **Authentication Failing**
+   - Check if you're using sandbox mode for testing
+   - Verify your redirect URI exactly matches the configuration
+   - Ensure all required dependencies are installed
 
-const authSdk = new OCAuthSandbox()
-await authSdk.signInWithRedirect( {
-    state: 'opencampus',
-});
-```
+3. **Context Errors**
+   - Make sure `OCConnect` wraps your entire app
+   - Verify you're using `useOCAuth` hook inside `OCConnect` provider
 
-The login flow adhere with PKCE standard. The following params will be prepared by our SDK and send to authentication server.
+4. **Sandbox Verification Required**
+   - Log in to https://id.sandbox.opencampus.xyz/ to initialize your sandbox OCID
+   - This error is normal for new sandbox accounts
 
-| Method | Description |
-| --- | --- |
-| origin_url | Origin of the authentication request |
-| redirect_uri | Desitnation after the authentication is completed |
-| response_type | 'code' is being used to adhere with PKCE standard  |
-| scope | only support 'openid' at the moment |
-| code_challenge | adhere with PKCE standard |
-| code_challenge_method | Only S256 is supported at the moment |
-| ref | Unique identifiers assigned to partners for tracking during user registration |
+### Testing Tips
 
-Sample usage to handle login response
+1. **Use Sandbox Mode**: Always start with `sandboxMode: true` for development
+2. **Deep Link Testing**: Test deep links using `npx expo start` and scan QR code with Expo Go
+3. **State Persistence**: The SDK handles token persistence automatically via AsyncStorage
 
-```js
-try {
-    const authState = await ocAuth.handleLoginRedirect();
-    if ( authState.idToken ) {
-        // login process is completed
-    } else {
-        // login process is not completed
-    }
-} catch ( e ) {
-    // there is an exception during login process
-}
-```
+### Production Deployment
 
-Access OCId info of Auth SDK
+1. **Get Client ID**: Contact your Open Campus Ambassador for production Client ID
+2. **Configure Redirect URIs**: Set up allowed redirect URIs in your production client configuration
+3. **Set Live Mode**: Change `sandboxMode: false` and use your production Client ID
+4. **Test Thoroughly**: Test the complete flow in production environment before release
 
-| property | Description |
-| --- | --- |
-| OCId | return OC ID |
-| ethAddress | Return eth Wallet Address that connect to the ID |
+## Resources
 
-### License
-ocid-connect-js is released under the MIT license.
-
-## JWT Verification Example
-
-Below is a sample code snippet demonstrating how to fetch the JSON Web Key Set (JWKS) from a remote URL and verify a JWT. Depending on the environment, it will choose either the Sandbox or Live JWKS URL.
-
-Sandbox:
-https://static.opencampus.xyz/jwks/jwks-sandbox.json
-
-Live:
-https://static.opencampus.xyz/jwks/jwks-live.json
-
-
-### This  is just an example, you can use any library to verify the JWT. Do not use this code in production.
-
-```js
-import * as jose from 'jose';
-
-const fetchJWKS = async (jwkUrl) => {
-  const resp = await fetch(jwkUrl);
-  json = await resp.json();
-  return await jose.createLocalJWKSet(json);
-};
-
-const verifyJwt = async (jwt, jwkUrl) => {
-  const JWK = await fetchJWKS(jwkUrl);
-  const { payload } = await jose.jwtVerify(jwt, JWK);
-  return payload;
-};
-
-// Example usage
-const verifyTokenExample = async (jwt) => {
-  try {
-    // Choose the JWKS URL based on the environment
-    const jwkUrl = process.env.NODE_ENV === 'production'
-      ? 'https://static.opencampus.xyz/jwks/jwks-live.json'
-      : 'https://static.opencampus.xyz/certs/jwks-sandbox.json';
-      
-    const payload = await verifyJwt(jwt, jwkUrl);
-    console.log('JWT verified successfully:', payload);
-  } catch (error) {
-    console.error('JWT verification failed:', error);
-  }
-};
-
-// Replace 'your_jwt_here' with your actual JWT token
-verifyTokenExample('your_jwt_here');
-```
+- [OCID Connect Documentation](https://github.com/opencampus-xyz/ocid-connect-js)
+- [Expo Deep Linking Guide](https://docs.expo.dev/guides/deep-linking/)
+- [React Native AsyncStorage](https://react-native-async-storage.github.io/async-storage/)
 
 
