@@ -81,7 +81,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opencampus-xyz/ocid-connect-js.git"
+    "url": "git+https://github.com/zeroexcore/ocid-connect-react-native.git"
   },
   "npmName": "@opencampus/ocid-connect-react-native",
   "npmFileMap": [
