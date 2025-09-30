@@ -322,7 +322,37 @@ const styles = StyleSheet.create({
 #### `components/ocid/OCSpinner.tsx`
 
 ```typescript
-OC
+import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+interface OCSpinnerProps {
+    height?: number;
+    width?: number;
+    size?: 'small' | 'large';
+    color?: string;
+}
+
+const OCSpinner: React.FC<OCSpinnerProps> = ({ 
+    height = 50, 
+    width = 50, 
+    size = 'large',
+    color = '#141BEB'
+}) => {
+    return (
+        <View style={[styles.container, { height, width }]}>
+            <ActivityIndicator size={size} color={color} />
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+});
+
+export default OCSpinner;
 ```
 
 
@@ -795,9 +825,7 @@ const styles = StyleSheet.create({
    - Make sure `OCConnect` wraps your entire app
    - Verify you're using `useOCAuth` hook inside `OCConnect` provider
 
-4. **Sandbox Verification Required**
-   - Log in to https://id.sandbox.opencampus.xyz/ to initialize your sandbox OCID
-   - This error is normal for new sandbox accounts
+
 
 ### Testing Tips
 
@@ -805,16 +833,9 @@ const styles = StyleSheet.create({
 2. **Deep Link Testing**: Test deep links using `npx expo start` and scan QR code with Expo Go
 3. **State Persistence**: The SDK handles token persistence automatically via AsyncStorage
 
-### Production Deployment
-
-1. **Get Client ID**: Contact your Open Campus Ambassador for production Client ID
-2. **Configure Redirect URIs**: Set up allowed redirect URIs in your production client configuration
-3. **Set Live Mode**: Change `sandboxMode: false` and use your production Client ID
-4. **Test Thoroughly**: Test the complete flow in production environment before release
 
 ## Resources
 
-- [OCID Connect Documentation](https://github.com/opencampus-xyz/ocid-connect-js)
 - [Expo Deep Linking Guide](https://docs.expo.dev/guides/deep-linking/)
 - [React Native AsyncStorage](https://react-native-async-storage.github.io/async-storage/)
 
