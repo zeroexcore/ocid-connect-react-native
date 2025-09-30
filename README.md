@@ -18,13 +18,7 @@ A comprehensive guide for integrating the OCID Connect React Native SDK in an Ex
 ### Required Accounts and IDs
 
 - **Sandbox Mode (Development)**: No Client ID required - perfect for testing and development
-- **Live Mode (Production)**: Auth Client ID required - contact your Open Campus Ambassador for access to Developer Account
 
-### Important Notes
-
-- **Sandbox vs Live**: Sandbox environment is separate from production. OCIDs created in sandbox don't exist in production
-- **Sandbox Verification**: If your OCID is created through sandbox, log in to https://id.sandbox.opencampus.xyz/ to properly initialize it
-- **Client ID**: Only required for live mode, optional for sandbox mode
 
 ## Installation
 
