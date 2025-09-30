@@ -34,5 +34,10 @@ export const buildAuthEndpointUrl = (signInParams, loginEndPoint) => {
         loginUrl.searchParams.append('ref', signInParams.referralCode);
     }
 
+    // prompt parameter for forcing re-authentication
+    if (signInParams.prompt) {
+        loginUrl.searchParams.append('prompt', signInParams.prompt);
+    }
+
     return loginUrl.href;
 };

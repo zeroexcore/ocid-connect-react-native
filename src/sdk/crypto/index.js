@@ -10,3 +10,5 @@
 export * from './webcrypto';
 export * from './base64';
 export * from './verifyToken';
+export * from './jwks';
+export * from './jwtVerifier';

@@ -19,13 +19,15 @@ class TokenManager
     storageManager;
     tokenExpiredAt;
     tokenEndPoint;
-    publicKey;
+    jwksUrl;
+    clientId;
 
-    constructor ( StorageManagerClass, tokenEndPoint, publicKey )
+    constructor ( StorageManagerClass, tokenEndPoint, jwksUrl, clientId )
     {
         this.storageManager = new StorageManagerClass( TOKEN_STORAGE_NAME );
         this.tokenEndPoint = tokenEndPoint;
-        this.publicKey = publicKey;
+        this.jwksUrl = jwksUrl;
+        this.clientId = clientId;
     }
 
     async clear ()
@@ -53,7 +55,7 @@ class TokenManager
             
             // Handle sandbox verification error specifically
             if (responseData.error && responseData.error.subType === 'SANDBOX_WALLET_ERROR') {
-                throw new AuthError('SANDBOX_VERIFICATION_REQUIRED: Please create an account at https://id.sandbox.opencampus.xyz/ first');
+                throw new AuthError(JSON.stringify(responseData.error));
             }
             
             const { access_token, id_token } = responseData;
@@ -61,11 +63,17 @@ class TokenManager
             {
                 throw new AuthError( 'Fail to exchange token: ' + JSON.stringify(responseData) );
             }
-            const pubKey = await this.getPublicKey();
-            const tokenVerified = await verifyToken( id_token, pubKey );
+            
+            // Verify token with cryptographic signature verification using JWKS
+            const jwksUrl = await this.getJWKSUrl();
+            const tokenVerified = await verifyToken( id_token, jwksUrl, {
+                expectedIssuer: 'OpenCampus',
+                expectedAudience: this.clientId
+            });
+            
             if ( !tokenVerified )
             {
-                throw new AuthError( 'Unable to verify token' );
+                throw new AuthError( 'Unable to verify token: signature or claims validation failed' );
             }
             const parsedAccessToken = parseJwt( access_token );
             const storageData = Object.assign(
@@ -104,9 +112,9 @@ class TokenManager
         return await this.storageManager.getStorageObject().getItem( 'expired' );
     }
 
-    async getPublicKey () 
+    async getJWKSUrl () 
     {
-        return this.publicKey;
+        return this.jwksUrl;
     }
 
     async hasExpired ()

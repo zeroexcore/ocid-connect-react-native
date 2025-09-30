@@ -83,6 +83,15 @@ function AuthContent() {
                 state={JSON.stringify({ timestamp: Date.now() })}
               />
             </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={styles.clearCacheButton}
+              >
+                <Text style={styles.clearCacheText}>🗑️ Clear Cache & Browser Session</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -183,6 +192,18 @@ const styles = StyleSheet.create({
   logoutText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  clearCacheButton: {
+    backgroundColor: '#6c757d',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  clearCacheText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   configInfo: {
     marginTop: 8,
