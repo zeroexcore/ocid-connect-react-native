@@ -1,5 +1,5 @@
 {
-  "name": "@opencampus/ocid-connect-react-native",
+  "name": "ocid-connect-react-native",
   "version": "1.0.0",
   "author": "Animoca Brands",
   "license": "MIT",
@@ -83,7 +83,7 @@
     "type": "git",
     "url": "git+https://github.com/zeroexcore/ocid-connect-react-native.git"
   },
-  "npmName": "@opencampus/ocid-connect-react-native",
+  "npmName": "ocid-connect-react-native",
   "npmFileMap": [
     {
       "basePath": "/dist/",
