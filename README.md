@@ -30,43 +30,31 @@ A comprehensive guide for integrating the OCID Connect React Native SDK in an Ex
 
 Install the OCID Connect React Native SDK and required dependencies:
 
+### 1. Install the SDK
 ```bash
 # Install the main SDK
-npm install @opencampus/ocid-connect-react-native
+npm install ocid-connect-react-native
 
 # Or with yarn
-yarn add @opencampus/ocid-connect-react-native
-
-# Install peer dependencies
-npm install @react-native-async-storage/async-storage base-64 react-native-get-random-values expo-crypto expo-web-browser expo-auth-session jwt-decode
-
-# Or with yarn
-yarn add @react-native-async-storage/async-storage base-64 react-native-get-random-values expo-crypto expo-web-browser expo-auth-session jwt-decode
+yarn add ocid-connect-react-native
 ```
 
-### Complete Dependencies List
+### 2. Install peer dependencies
+```bash
+# Required dependencies (Expo-managed)
+npx expo install \
+  @react-native-async-storage/async-storage \
+  react-native-get-random-values \
+  expo-crypto \
+  expo-web-browser \
+  expo-auth-session \
+  expo-linking
 
-Based on the example app, here are all the dependencies you'll need in your `package.json`:
-
-```json
-{
-  "dependencies": {
-    "@expo/vector-icons": "^15.0.2",
-    "@opencampus/ocid-connect-react-native": "^1.0.0",
-    "@react-native-async-storage/async-storage": "^2.2.0",
-    "base-64": "^1.0.0",
-    "expo": "~54.0.10",
-    "expo-auth-session": "^7.0.8",
-    "expo-crypto": "~15.0.7",
-    "expo-linking": "~8.0.8",
-    "expo-router": "~6.0.8",
-    "expo-web-browser": "~15.0.7",
-    "jwt-decode": "^3.1.2",
-    "react": "19.1.0",
-    "react-native": "0.81.4",
-    "react-native-get-random-values": "^1.9.0"
-  }
-}
+# Pure JS deps (regular install is fine)
+npm install base-64 jwt-decode
+# or
+yarn add base-64 jwt-decode
+`
 ```
 
 ## Expo Configuration
@@ -105,23 +93,12 @@ Update your `app.json` to include the custom URL scheme for deep linking:
 
 **Important**: The `scheme` must match your redirect URI configuration.
 
-### 2. Configure Metro (if needed)
-
-Your `metro.config.js` should work with the default Expo configuration:
-
-```javascript
-const { getDefaultConfig } = require('expo/metro-config');
-
-const config = getDefaultConfig(__dirname);
-
-module.exports = config;
-```
 
 ## Project Setup
 
 ### 1. Import Required Polyfills
 
-At the very top of your app's entry point (usually `App.js` or `index.js`), import the required polyfills:
+At the very top of your app's entry point (usually `_layout.tsx` or `App.js`  ), import the required polyfills:
 
 ```javascript
 import 'react-native-get-random-values';
@@ -132,7 +109,7 @@ import 'react-native-get-random-values';
 Create a configuration file or define constants for your OCID setup:
 
 ```javascript
-// constants/ocid.js
+// constants/ocid.ts
 export const OCID_CONFIG = {
   CLIENT_ID: 'sandbox', // Use 'sandbox' for development, your actual client ID for production
   REDIRECT_URI: 'yourapp://auth/callback', // Must match your app.json scheme
@@ -176,7 +153,7 @@ export const useOCAuth = (): OCAuthContextType => {
 
 ```typescript
 import React, { useEffect, useState } from 'react';
-import { OCAuthLive, OCAuthSandbox } from '@opencampus/ocid-connect-react-native';
+import { OCAuthLive, OCAuthSandbox } from 'ocid-connect-react-native';
 import { OCContext } from './OCContext';
 
 interface OCConnectProps {
@@ -342,15 +319,20 @@ const styles = StyleSheet.create({
 });
 ```
 
+#### `components/ocid/OCSpinner.tsx`
+
+```typescript
+OC
+```
+
+
 #### `components/ocid/LoginCallBack.tsx`
 
 ```typescript
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import OCSpinner from './OCSpinner';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useOCAuth } from './OCContext';
-
-let handledRedirect = false;
+import OCSpinner from './OCSpinner';
 
 interface LoginCallBackProps {
     url: string;
@@ -368,14 +350,19 @@ const LoginCallBack: React.FC<LoginCallBackProps> = ({
     customLoadingComponent 
 }) => {
     const { isInitialized, ocAuth, authState, setAuthError } = useOCAuth();
+    const handledRedirectRef = useRef(false);
 
     useEffect(() => {
         const handleLogin = async () => {
-            if (ocAuth && url) {
+            if (ocAuth && url && !handledRedirectRef.current) {
+                handledRedirectRef.current = true;
                 try {
+                    console.log('Handling login redirect with URL:', url);
                     await ocAuth.handleLoginRedirect(url);
+                    console.log('Login redirect handled successfully');
                     if (successCallback) successCallback();
                 } catch (e) {
+                    console.error('Login redirect error:', e);
                     setAuthError(e);
                     if (errorCallback) {
                         errorCallback(e);
@@ -383,27 +370,39 @@ const LoginCallBack: React.FC<LoginCallBackProps> = ({
                 }
             }
         };
-        if (!handledRedirect) {
+        
+        if (isInitialized && ocAuth && url) {
             handleLogin();
-            handledRedirect = true;
         }
-    }, [ocAuth, url, successCallback, errorCallback, setAuthError]);
+    }, [ocAuth, url, successCallback, errorCallback, setAuthError, isInitialized]);
 
+    // Show error if there's an auth error and no custom error callback
     if (isInitialized && authState?.error !== undefined && !errorCallback) {
         return customErrorComponent ? customErrorComponent : (
             <View style={styles.container}>
                 <Text style={styles.errorText}>Error Logging in: {authState.error.message}</Text>
             </View>
         );
-    } else {
-        return customLoadingComponent ? (
-            customLoadingComponent
-        ) : (
+    }
+    
+    // Show success message if authenticated
+    if (isInitialized && authState?.isAuthenticated) {
+        return (
             <View style={styles.container}>
-                <OCSpinner height={100} width={100} />
+                <Text style={styles.successText}>Login successful! Redirecting...</Text>
+                {customLoadingComponent ? customLoadingComponent : <OCSpinner height={100} width={100} />}
             </View>
         );
     }
+    
+    // Default loading state
+    return customLoadingComponent ? (
+        customLoadingComponent
+    ) : (
+        <View style={styles.container}>
+            <OCSpinner height={100} width={100} />
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({
@@ -418,46 +417,18 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: 20,
     },
+    successText: {
+        fontSize: 16,
+        color: 'green',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
 });
 
 export default LoginCallBack;
 ```
 
-#### `components/ocid/OCSpinner.tsx`
-
-```typescript
-import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-
-interface OCSpinnerProps {
-    height?: number;
-    width?: number;
-    size?: 'small' | 'large';
-    color?: string;
-}
-
-const OCSpinner: React.FC<OCSpinnerProps> = ({ 
-    height = 50, 
-    width = 50, 
-    size = 'large',
-    color = '#141BEB'
-}) => {
-    return (
-        <View style={[styles.container, { height, width }]}>
-            <ActivityIndicator size={size} color={color} />
-        </View>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: {
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-});
-
-export default OCSpinner;
-```
 
 #### `components/ocid/index.tsx`
 
@@ -478,8 +449,8 @@ Wrap your entire app with the OCConnect provider in your main app component:
 ```typescript
 // App.tsx or _layout.tsx (for Expo Router)
 import React from 'react';
-import { OCConnect } from './components/ocid';
-import { OCID_CONFIG } from './constants/ocid';
+import { OCConnect } from '@/components/ocid';
+import { OCID_CONFIG } from '@/constants/ocid';
 
 export default function App() {
   const opts = {
@@ -524,7 +495,7 @@ function AuthContent() {
 
   // Loading state
   if (!isInitialized) {
-    return (
+    return (callba
       <View style={styles.container}>
         <Text>Initializing OCID Connect...</Text>
       </View>
@@ -676,8 +647,8 @@ If you're using Expo Router, create a callback route:
 
 ```typescript
 // app/auth/callback.tsx
-import React, { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import React from 'react';
 import { LoginCallBack } from '../../components/ocid';
 
 export default function AuthCallback() {
@@ -687,12 +658,17 @@ export default function AuthCallback() {
   const url = `yourapp://auth/callback?${new URLSearchParams(params as Record<string, string>).toString()}`;
 
   const handleSuccess = () => {
-    router.replace('/'); // Navigate to home after successful auth
+    console.log('Auth callback success - navigating to home');
+    // Use push instead of replace to ensure proper navigation
+    router.push('/');
   };
 
   const handleError = (error: any) => {
     console.error('Auth callback error:', error);
-    router.replace('/auth'); // Navigate back to auth screen on error
+    // Navigate back to home even on error to prevent getting stuck
+    setTimeout(() => {
+      router.push('/');
+    }, 2000);
   };
 
   return (
@@ -741,7 +717,7 @@ export default function RootLayout() {
 ```typescript
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LoginButton, useOCAuth } from '../components/ocid';
+import { LoginButton, useOCAuth } from '@/components/ocid';
 
 export default function HomeScreen() {
   const { isInitialized, authState, ocAuth } = useOCAuth();
