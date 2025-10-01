@@ -55,14 +55,33 @@ export class OCAuthCore {
         await this.transactionManager.clear();
     }
 
-    async logout(logoutReturnTo) {
+    async logout(logoutReturnTo, skipBrowserLogout = false) {
         // Clear local storage and auth state
         await this.clearStorage();
         // Clear auth info manager state to trigger UI updates
         this.authInfoManager.clear();
         
-        // In React Native, we don't need to visit external logout endpoint
-        // The local session is cleared and that's sufficient
+        // Open browser to logout endpoint to clear server-side session cookies
+        // Skip if OpenCampus servers are having issues or if explicitly requested
+        if (!skipBrowserLogout && this.logoutEndPoint) {
+            try {
+                const logoutUrl = new URL(this.logoutEndPoint);
+                if (logoutReturnTo) {
+                    logoutUrl.searchParams.append('returnTo', logoutReturnTo);
+                }
+                
+                console.log('Opening logout URL to clear browser session:', logoutUrl.href);
+                
+                // Open browser to logout (this clears cookies)
+                await WebBrowser.openAuthSessionAsync(logoutUrl.href, this.redirectUri);
+            } catch (error) {
+                console.warn('Browser logout failed (OpenCampus server issue):', error.message);
+                console.log('Local session cleared, but browser session may persist');
+            }
+        } else {
+            console.log('Skipping browser logout - only clearing local session');
+        }
+        
         console.log('Logout successful - local session cleared');
     }
 
@@ -76,6 +95,12 @@ export class OCAuthCore {
         const meta = createPkceMeta(signinParams);
         await this.transactionManager.save(meta);
         signinParams.referralCode = this.referralCode;
+        
+        // Add prompt=login if forceLogin is set (forces re-authentication)
+        if (params.forceLogin) {
+            signinParams.prompt = 'login';
+        }
+        
         const requestUrl = buildAuthEndpointUrl(signinParams, this.loginEndPoint);
         
         // Open in-app browser and wait for redirect
@@ -196,17 +221,16 @@ export class OCAuthCore {
     }
 }
 
-const LIVE_PUBLIC_KEY =
-    'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBIDHtLbgVM76SXZ4iuIjuO+ERQPnVpJzagOsZdYxFG3ZJmvfdpr/Z29SLUbdZWafrOlAVlKe1Ovf/tcH671tTw==';
-const SANDBOX_PUBLIC_KEY =
-    'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/EymMLXd/MVYPK5r2xXQj91ZVvX3OQ+QagvR2N6lCvRVjnzmOtPRTf+u5g1RliWnmuxbV3gTm0/0VuV/40Salg==';
+// JWKS URLs for secure JWT verification
+const JWKS_LIVE_URL = 'https://static.opencampus.xyz/jwks/jwks-live.json';
+const JWKS_SANDBOX_URL = 'https://static.opencampus.xyz/jwks/jwks-sandbox.json';
 export class OCAuthLive extends OCAuthCore {
     constructor(opts = {}) {
         const {
             tokenEndPoint: overrideTokenEndpoint,
             loginEndPoint: overrideLoginEndpoint,
             logoutEndPoint: overrideLogoutEndpoint,
-            publicKey: overridePublicKey,
+            jwksUrl: overrideJwksUrl,
             redirectUri,
             referralCode,
             clientId,
@@ -214,11 +238,11 @@ export class OCAuthLive extends OCAuthCore {
         const tokenEndpoint = overrideTokenEndpoint || 'https://api.login.opencampus.xyz/auth/token';
         const loginEndpoint = overrideLoginEndpoint || 'https://api.login.opencampus.xyz/auth/login';
         const logoutEndpoint = overrideLogoutEndpoint || 'https://api.login.opencampus.xyz/auth/logout';
-        const publicKey = overridePublicKey || LIVE_PUBLIC_KEY;
+        const jwksUrl = overrideJwksUrl || JWKS_LIVE_URL;
 
         const storageClass = getStorageClass(opts);
         const pkceTransactionManager = new TransactionManager(storageClass);
-        const tokenManager = new TokenManager(storageClass, tokenEndpoint, publicKey);
+        const tokenManager = new TokenManager(storageClass, tokenEndpoint, jwksUrl, clientId);
         super(clientId, loginEndpoint, redirectUri, pkceTransactionManager, tokenManager, referralCode, logoutEndpoint);
     }
 }
@@ -229,7 +253,7 @@ export class OCAuthSandbox extends OCAuthCore {
             tokenEndPoint: overrideTokenEndpoint,
             loginEndPoint: overrideLoginEndpoint,
             logoutEndPoint: overrideLogoutEndpoint,
-            publicKey: overridePublicKey,
+            jwksUrl: overrideJwksUrl,
             redirectUri,
             referralCode,
         } = opts;
@@ -237,11 +261,11 @@ export class OCAuthSandbox extends OCAuthCore {
         const tokenEndpoint = overrideTokenEndpoint || 'https://api.login.sandbox.opencampus.xyz/auth/token';
         const loginEndpoint = overrideLoginEndpoint || 'https://api.login.sandbox.opencampus.xyz/auth/login';
         const logoutEndpoint = overrideLogoutEndpoint || 'https://api.login.sandbox.opencampus.xyz/auth/logout';
-        const publicKey = overridePublicKey || SANDBOX_PUBLIC_KEY;
+        const jwksUrl = overrideJwksUrl || JWKS_SANDBOX_URL;
 
         const storageClass = getStorageClass(opts);
         const pkceTransactionManager = new TransactionManager(storageClass);
-        const tokenManager = new TokenManager(storageClass, tokenEndpoint, publicKey);
+        const tokenManager = new TokenManager(storageClass, tokenEndpoint, jwksUrl, clientId);
         super(clientId, loginEndpoint, redirectUri, pkceTransactionManager, tokenManager, referralCode, logoutEndpoint);
     }
 }
