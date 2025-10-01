@@ -44,6 +44,15 @@ const decodeJWT = (token) => {
  * @returns {Object} Elliptic curve key object
  */
 const jwkToEllipticKey = (jwk) => {
+    console.log('[JWT Verifier] Converting JWK to elliptic key...');
+    console.log('[JWT Verifier] JWK details:', { 
+        kty: jwk.kty, 
+        crv: jwk.crv, 
+        kid: jwk.kid,
+        use: jwk.use,
+        alg: jwk.alg
+    });
+
     if (jwk.kty !== 'EC') {
         throw new Error(`Unsupported key type: ${jwk.kty}. Only EC (Elliptic Curve) is supported.`);
     }
@@ -52,24 +61,38 @@ const jwkToEllipticKey = (jwk) => {
         throw new Error(`Unsupported curve: ${jwk.crv}. Only P-256 is supported.`);
     }
 
-    // Decode base64url encoded x and y coordinates
-    const xBuffer = Buffer.from(base64UrlDecode(jwk.x), 'binary');
-    const yBuffer = Buffer.from(base64UrlDecode(jwk.y), 'binary');
+    try {
+        // Decode base64url encoded x and y coordinates
+        console.log('[JWT Verifier] Decoding x and y coordinates...');
+        const xBuffer = Buffer.from(base64UrlDecode(jwk.x), 'binary');
+        const yBuffer = Buffer.from(base64UrlDecode(jwk.y), 'binary');
 
-    // Convert to hex
-    const x = xBuffer.toString('hex');
-    const y = yBuffer.toString('hex');
+        // Convert to hex
+        const x = xBuffer.toString('hex');
+        const y = yBuffer.toString('hex');
 
-    // Create elliptic curve instance
-    const ec = new EC('p256');
-    
-    // Create public key from coordinates
-    const key = ec.keyFromPublic({
-        x: x,
-        y: y
-    }, 'hex');
+        console.log('[JWT Verifier] Key coordinates (hex):', {
+            x: x.substring(0, 20) + '...',
+            y: y.substring(0, 20) + '...',
+            xLength: x.length,
+            yLength: y.length
+        });
 
-    return key;
+        // Create elliptic curve instance
+        const ec = new EC('p256');
+        
+        // Create public key from coordinates
+        const key = ec.keyFromPublic({
+            x: x,
+            y: y
+        }, 'hex');
+
+        console.log('[JWT Verifier] ✓ Elliptic key created successfully');
+        return key;
+    } catch (error) {
+        console.error('[JWT Verifier] ✗ Failed to create elliptic key:', error.message);
+        throw error;
+    }
 };
 
 /**
@@ -81,16 +104,23 @@ const jwkToEllipticKey = (jwk) => {
  */
 const verifySignature = async (message, signature, publicKey) => {
     try {
+        console.log('[JWT Verifier] Starting signature verification...');
+        console.log('[JWT Verifier] Message to verify (first 50 chars):', message.substring(0, 50) + '...');
+        
         // Hash the message using SHA-256
         const messageBuffer = Buffer.from(message, 'utf8');
+        console.log('[JWT Verifier] Hashing message with SHA-256...');
         const hash = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             message,
             { encoding: Crypto.CryptoEncoding.HEX }
         );
+        console.log('[JWT Verifier] Hash (first 20 chars):', hash.substring(0, 20) + '...');
 
         // Decode the signature from base64url
+        console.log('[JWT Verifier] Decoding signature...');
         const signatureBuffer = Buffer.from(base64UrlDecode(signature), 'binary');
+        console.log('[JWT Verifier] Signature buffer length:', signatureBuffer.length);
         
         // ECDSA signature in JWT is r + s concatenated (64 bytes for P-256)
         if (signatureBuffer.length !== 64) {
@@ -100,13 +130,25 @@ const verifySignature = async (message, signature, publicKey) => {
         // Split into r and s (32 bytes each)
         const r = signatureBuffer.slice(0, 32).toString('hex');
         const s = signatureBuffer.slice(32, 64).toString('hex');
+        console.log('[JWT Verifier] Signature components:', {
+            r: r.substring(0, 20) + '...',
+            s: s.substring(0, 20) + '...'
+        });
 
         // Verify the signature
+        console.log('[JWT Verifier] Verifying with elliptic curve...');
         const isValid = publicKey.verify(hash, { r, s });
+
+        if (isValid) {
+            console.log('[JWT Verifier] ✓ Signature verification PASSED');
+        } else {
+            console.log('[JWT Verifier] ✗ Signature verification FAILED');
+        }
 
         return isValid;
     } catch (error) {
-        console.error('Signature verification error:', error);
+        console.error('[JWT Verifier] ✗ Signature verification error:', error.message);
+        console.error('[JWT Verifier] Error stack:', error.stack);
         return false;
     }
 };
@@ -179,65 +221,80 @@ const validateClaims = (payload, options = {}) => {
  * @returns {Promise<Object>} Verification result
  */
 export const verifyJWT = async (idToken, jwksUrl, options = {}) => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('[JWT Verifier] Starting JWT verification process');
+    console.log('[JWT Verifier] JWKS URL:', jwksUrl);
+    console.log('[JWT Verifier] Options:', options);
+    console.log('═══════════════════════════════════════════════════════');
+    
     try {
         // Step 1: Decode the JWT
+        console.log('[JWT Verifier] STEP 1: Decoding JWT...');
         const { header, payload, signature, message } = decodeJWT(idToken);
 
-        console.log('JWT Header:', header);
-        console.log('JWT Payload:', {
-            iss: payload.iss,
-            aud: payload.aud,
-            exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'none',
-            sub: payload.sub
-        });
+        console.log('[JWT Verifier] ✓ JWT decoded successfully');
 
         // Step 2: Check algorithm
+        console.log('[JWT Verifier] STEP 2: Checking algorithm...');
         if (header.alg !== 'ES256') {
             throw new Error(`Unsupported algorithm: ${header.alg}. Only ES256 is supported.`);
         }
 
         // Step 3: Fetch JWKS
+        console.log('[JWT Verifier] STEP 3: Fetching JWKS...');
         const jwks = await fetchJWKS(jwksUrl);
+      
 
         // Step 4: Find the key with matching kid
+        console.log('[JWT Verifier] STEP 4: Finding matching key...');
+
         let jwk;
         if (header.kid) {
             jwk = findKeyInJWKS(jwks, header.kid);
             if (!jwk) {
+                console.error('[JWT Verifier] ✗ Key not found in JWKS');
                 throw new Error(`Key with kid "${header.kid}" not found in JWKS`);
             }
+            console.log('[JWT Verifier] ✓ Found matching key:', jwk.kid);
         } else {
             // If no kid in header, try the first key (fallback for some implementations)
             if (jwks.keys && jwks.keys.length > 0) {
                 jwk = jwks.keys[0];
-                console.warn('No kid in JWT header, using first key from JWKS');
             } else {
                 throw new Error('No kid in JWT header and no keys in JWKS');
             }
         }
 
         // Step 5: Convert JWK to elliptic key
+        console.log('[JWT Verifier] STEP 5: Converting JWK to elliptic key...');
         const publicKey = jwkToEllipticKey(jwk);
 
         // Step 6: Verify signature
+        console.log('[JWT Verifier] STEP 6: Verifying cryptographic signature...');
         const signatureValid = await verifySignature(message, signature, publicKey);
         if (!signatureValid) {
-            throw new Error('JWT signature verification failed');
+            console.error('[JWT Verifier] ✗ SIGNATURE VERIFICATION FAILED');
+            throw new Error('JWT signature verification failed - token may be forged or tampered');
         }
 
-        console.log('✓ JWT signature verified successfully');
+        console.log('[JWT Verifier] ✓✓✓ JWT SIGNATURE VERIFIED SUCCESSFULLY ✓✓✓');
 
         // Step 7: Validate claims
+        console.log('[JWT Verifier] STEP 7: Validating JWT claims...');
         const claimsValidation = validateClaims(payload, {
             expectedIssuer: options.expectedIssuer,
             expectedAudience: options.expectedAudience
         });
 
         if (!claimsValidation.valid) {
+            console.error('[JWT Verifier] ✗ Claims validation failed:', claimsValidation.errors);
             throw new Error(`JWT claims validation failed: ${claimsValidation.errors.join(', ')}`);
         }
 
-        console.log('✓ JWT claims validated successfully');
+        console.log('[JWT Verifier] ✓ JWT claims validated successfully');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('[JWT Verifier] ✓✓✓ ALL VERIFICATION CHECKS PASSED ✓✓✓');
+        console.log('═══════════════════════════════════════════════════════');
 
         return {
             valid: true,
@@ -246,7 +303,11 @@ export const verifyJWT = async (idToken, jwksUrl, options = {}) => {
         };
 
     } catch (error) {
-        console.error('JWT verification failed:', error.message);
+        console.error('═══════════════════════════════════════════════════════');
+        console.error('[JWT Verifier] ✗✗✗ JWT VERIFICATION FAILED ✗✗✗');
+        console.error('[JWT Verifier] Error:', error.message);
+        console.error('[JWT Verifier] Stack:', error.stack);
+        console.error('═══════════════════════════════════════════════════════');
         return {
             valid: false,
             error: error.message

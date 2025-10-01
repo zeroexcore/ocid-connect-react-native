@@ -57,14 +57,18 @@ const jwksCache = new JWKSCache();
  * @returns {Promise<Object>} The JWKS object
  */
 export const fetchJWKS = async (jwksUrl) => {
+    console.log('[JWKS Fetcher] ───────────────────────────────────────');
+    console.log('[JWKS Fetcher] Fetching JWKS from:', jwksUrl);
+    
     // Check cache first
     const cached = jwksCache.get(jwksUrl);
     if (cached) {
-        console.log('Using cached JWKS');
+        console.log('[JWKS Fetcher] ✓ Using cached JWKS');
+        console.log('[JWKS Fetcher] ───────────────────────────────────────');
         return cached;
     }
 
-    console.log('Fetching JWKS from:', jwksUrl);
+    console.log('[JWKS Fetcher] No cache found, fetching from server...');
     
     try {
         const response = await fetch(jwksUrl, {
@@ -76,6 +80,8 @@ export const fetchJWKS = async (jwksUrl) => {
             signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
         });
 
+
+
         if (!response.ok) {
             throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`);
         }
@@ -86,12 +92,20 @@ export const fetchJWKS = async (jwksUrl) => {
             throw new Error('Invalid JWKS format: missing keys array');
         }
 
+        console.log('[JWKS Fetcher] ✓ JWKS validated');
+        console.log('[JWKS Fetcher] Number of keys:', jwks.keys.length);
+
+
         // Cache the result
         jwksCache.set(jwksUrl, jwks);
+        console.log('[JWKS Fetcher] ✓ JWKS cached for 1 hour');
+        console.log('[JWKS Fetcher] ───────────────────────────────────────');
 
         return jwks;
     } catch (error) {
-        console.error('Error fetching JWKS:', error);
+        console.error('[JWKS Fetcher] ✗ Error fetching JWKS:', error.message);
+        console.error('[JWKS Fetcher] Error stack:', error.stack);
+        console.error('[JWKS Fetcher] ───────────────────────────────────────');
         throw new Error(`Failed to fetch JWKS: ${error.message}`);
     }
 };
