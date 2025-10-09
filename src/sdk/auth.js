@@ -73,7 +73,12 @@ export class OCAuthCore {
                 console.log('Opening logout URL to clear browser session:', logoutUrl.href);
                 
                 // Open browser to logout (this clears cookies)
-                await WebBrowser.openAuthSessionAsync(logoutUrl.href, this.redirectUri);
+                const result = await WebBrowser.openAuthSessionAsync(logoutUrl.href, this.redirectUri);
+                
+                // Handle different result types - cancel/dismiss is expected during logout
+                if (result.type === 'success' || result.type === 'cancel' || result.type === 'dismiss') {
+                    console.log('Browser session cleared');
+                }
             } catch (error) {
                 console.warn('Browser logout failed (OpenCampus server issue):', error.message);
                 console.log('Local session cleared, but browser session may persist');
