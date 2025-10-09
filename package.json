@@ -1,6 +1,6 @@
 {
   "name": "ocid-connect-react-native",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "Animoca Brands",
   "license": "MIT",
   "description": "OCID Connector Library for React Native",
