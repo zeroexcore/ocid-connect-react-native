@@ -8,6 +8,7 @@
     "scheme": "test",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "jsEngine": "hermes",
     "linking": {
       "prefixes": [
         "test://"

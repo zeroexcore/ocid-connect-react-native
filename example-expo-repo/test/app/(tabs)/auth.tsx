@@ -17,6 +17,7 @@ function AuthContent() {
     if (ocAuth) {
       try {
         await ocAuth.logout();
+        Alert.alert('Success', 'You have been logged out successfully', [{ text: 'OK' }]);
       } catch (error) {
         console.error('Logout failed:', error);
         Alert.alert('Error', 'Logout failed');
