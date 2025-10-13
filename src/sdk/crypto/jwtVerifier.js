@@ -104,8 +104,6 @@ const jwkToEllipticKey = (jwk) => {
  */
 const verifySignature = async (message, signature, publicKey) => {
     try {
-        console.log('[JWT Verifier] Starting signature verification...');
-        console.log('[JWT Verifier] Message to verify (first 50 chars):', message.substring(0, 50) + '...');
         
         // Hash the message using SHA-256
         const messageBuffer = Buffer.from(message, 'utf8');
@@ -115,12 +113,9 @@ const verifySignature = async (message, signature, publicKey) => {
             message,
             { encoding: Crypto.CryptoEncoding.HEX }
         );
-        console.log('[JWT Verifier] Hash (first 20 chars):', hash.substring(0, 20) + '...');
 
         // Decode the signature from base64url
-        console.log('[JWT Verifier] Decoding signature...');
         const signatureBuffer = Buffer.from(base64UrlDecode(signature), 'binary');
-        console.log('[JWT Verifier] Signature buffer length:', signatureBuffer.length);
         
         // ECDSA signature in JWT is r + s concatenated (64 bytes for P-256)
         if (signatureBuffer.length !== 64) {
@@ -130,13 +125,8 @@ const verifySignature = async (message, signature, publicKey) => {
         // Split into r and s (32 bytes each)
         const r = signatureBuffer.slice(0, 32).toString('hex');
         const s = signatureBuffer.slice(32, 64).toString('hex');
-        console.log('[JWT Verifier] Signature components:', {
-            r: r.substring(0, 20) + '...',
-            s: s.substring(0, 20) + '...'
-        });
-
+    
         // Verify the signature
-        console.log('[JWT Verifier] Verifying with elliptic curve...');
         const isValid = publicKey.verify(hash, { r, s });
 
         if (isValid) {
@@ -223,8 +213,6 @@ const validateClaims = (payload, options = {}) => {
 export const verifyJWT = async (idToken, jwksUrl, options = {}) => {
     console.log('═══════════════════════════════════════════════════════');
     console.log('[JWT Verifier] Starting JWT verification process');
-    console.log('[JWT Verifier] JWKS URL:', jwksUrl);
-    console.log('[JWT Verifier] Options:', options);
     console.log('═══════════════════════════════════════════════════════');
     
     try {
