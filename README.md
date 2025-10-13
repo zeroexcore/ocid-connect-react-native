@@ -496,10 +496,10 @@ export default function App() {
 Create a complete authentication screen:
 
 ```typescript
-// screens/AuthScreen.tsx
+// app/(tabs)/auth.tsx
 import React from 'react';
 import { View, StyleSheet, Alert, ScrollView, Text, TouchableOpacity } from 'react-native';
-import { LoginButton, useOCAuth } from '../components/ocid';
+import { LoginButton, useOCAuth } from '@/components/ocid';
 
 function AuthContent() {
   const { isInitialized, ocAuth, authState } = useOCAuth();
@@ -520,7 +520,7 @@ function AuthContent() {
 
   // Loading state
   if (!isInitialized) {
-    return (callba
+    return (
       <View style={styles.container}>
         <Text>Initializing OCID Connect...</Text>
       </View>
@@ -663,12 +663,76 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AuthContent;
 ```
 
-### 3. Deep Link Handling (Expo Router)
 
-If you're using Expo Router, create a callback route:
+### 3. Add Auth Tab to Navigation (Expo Router)
+
+If you're using Expo Router with tab navigation, you need to add the Auth screen to your tab layout.
+
+#### Step 1: Save the Auth Screen in the Right Location
+
+
+#### Step 2: Update Your Tab Layout
+
+Add the Auth tab to your `app/(tabs)/_layout.tsx`:
+
+```typescript
+// app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
+      {/* Add the Auth tab */}
+      <Tabs.Screen
+        name="auth"
+        options={{
+          title: 'Auth',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.circle.fill" color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+**Note**: If you don't have `IconSymbol` component, you can use any icon library (like `@expo/vector-icons`) or a simple `Text` component for the icon.
+
+#### What You Should See
+
+After completing these steps, your app should have:
+- ✅ Three tabs visible at the bottom: **Home**, **Explore**, and **Auth**
+- ✅ Tapping the **Auth** tab shows your authentication screen
+- ✅ The screen displays the login button when not authenticated
+- ✅ The screen displays user info and logout button when authenticated
+
+### 4. Deep Link Handling (Expo Router)
+
 
 ```typescript
 // app/auth/callback.tsx
@@ -706,132 +770,6 @@ export default function AuthCallback() {
 }
 ```
 
-## Complete Example
 
-Here's a complete minimal example using Expo Router:
-
-### `app/_layout.tsx`
-
-```typescript
-import { Stack } from 'expo-router';
-import { OCConnect } from '../components/ocid';
-import 'react-native-get-random-values';
-
-const REDIRECT_URI = 'yourapp://auth/callback';
-const CLIENT_ID = 'sandbox';
-
-export default function RootLayout() {
-  const opts = {
-    clientId: CLIENT_ID,
-    redirectUri: REDIRECT_URI,
-  };
-
-  return (
-    <OCConnect opts={opts} sandboxMode={true}>
-      <Stack>
-        <Stack.Screen name="index" options={{ title: 'Home' }} />
-        <Stack.Screen name="auth/callback" options={{ title: 'Authenticating...' }} />
-      </Stack>
-    </OCConnect>
-  );
-}
-```
-
-### `app/index.tsx`
-
-```typescript
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { LoginButton, useOCAuth } from '@/components/ocid';
-
-export default function HomeScreen() {
-  const { isInitialized, authState, ocAuth } = useOCAuth();
-
-  if (!isInitialized) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
-
-  const isAuthenticated = authState?.isAuthenticated || false;
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>OCID Connect Example</Text>
-      
-      {isAuthenticated ? (
-        <View style={styles.userInfo}>
-          <Text>Welcome! OCID: {authState.OCId}</Text>
-          <Text>Wallet: {authState.ethAddress}</Text>
-        </View>
-      ) : (
-        <View>
-          <Text style={styles.subtitle}>Please login to continue</Text>
-          <LoginButton 
-            theme="ocBlue"
-            pill={true}
-            state="demo"
-          />
-        </View>
-      )}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  userInfo: {
-    alignItems: 'center',
-  },
-});
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Deep Link Not Working**
-   - Verify your `app.json` scheme matches your redirect URI
-   - Ensure you're testing on a physical device or using Expo Go correctly
-
-2. **Authentication Failing**
-   - Check if you're using sandbox mode for testing
-   - Verify your redirect URI exactly matches the configuration
-   - Ensure all required dependencies are installed
-
-3. **Context Errors**
-   - Make sure `OCConnect` wraps your entire app
-   - Verify you're using `useOCAuth` hook inside `OCConnect` provider
-
-
-
-### Testing Tips
-
-1. **Use Sandbox Mode**: Always start with `sandboxMode: true` for development
-2. **Deep Link Testing**: Test deep links using `npx expo start` and scan QR code with Expo Go
-3. **State Persistence**: The SDK handles token persistence automatically via AsyncStorage
-
-
-## Resources
-
-- [Expo Deep Linking Guide](https://docs.expo.dev/guides/deep-linking/)
-- [React Native AsyncStorage](https://react-native-async-storage.github.io/async-storage/)
 
 
