@@ -6,7 +6,7 @@ import { ThemedView } from '@/components/themed-view';
 import { LoginButton, OCConnect, useOCAuth } from '@/components/ocid';
 
 const REDIRECT_URI = 'test://auth/callback'; // Use app scheme that matches server config
-const CLIENT_ID = 'sandbox'; // Using sandbox default client ID
+const CLIENT_ID = 'db5874df-c14c-43ad-88f0-a9dcbbf2741c'; // Using sandbox default client ID
 
 console.log('OCID SDK Redirect URI:', REDIRECT_URI);
 
@@ -223,7 +223,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <OCConnect opts={opts} sandboxMode={true}>
+    <OCConnect opts={opts} sandboxMode={false}>
       <AuthContent />
     </OCConnect>
   );

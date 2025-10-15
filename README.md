@@ -770,6 +770,36 @@ export default function AuthCallback() {
 }
 ```
 
+# Production Setup
 
+## 1. Open Campus Developer Portal Setup
+
+1. Log in to the [Open Campus Developer Portal](https://developers.opencampus.xyz/features/ocid-connect)
+2. Navigate to your application settings
+3. Add your production callback URL to the **Authorized Redirect URIs**:
+   ```
+   yourapp://auth/callback
+   ```
+   Replace `yourapp` with your actual app scheme from `app.json`
+
+4. Save your changes and copy your **Client ID**
+
+## 2. Update Frontend Configuration
+
+Update your configuration file with your production credentials:
+
+```javascript
+// constants/ocid.ts
+export const OCID_CONFIG = {
+  CLIENT_ID: '<your-client-id-from-developer-portal>', // Replace with your actual client ID
+  REDIRECT_URI: 'yourapp://auth/callback', // Must match your app.json scheme
+  SANDBOX_MODE: false, // Set to false for production
+};
+```
+
+**Important Notes:**
+- Replace `<your-client-id-from-developer-portal>` with your actual Client ID from the Open Campus Developer Portal
+- Ensure the `REDIRECT_URI` matches exactly what you configured in the developer portal
+- The redirect URI scheme (`yourapp://`) must match the `scheme` field in your `app.json`
 
 

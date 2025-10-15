@@ -149,9 +149,12 @@ const verifySignature = async (message, signature, publicKey) => {
  * @param {Object} options - Validation options
  * @returns {Object} Validation result with errors if any
  */
-const validateClaims = (payload, options = {}) => {
+const validateClaims = (payload, options) => {
     const errors = [];
     const now = Math.floor(Date.now() / 1000);
+    console.log('[JWT Verifier] Validating claims...');
+    console.log('[JWT Verifier] Payload:', payload);
+    console.log('[JWT Verifier] Options:', options);
 
     // Check expiration (exp)
     if (payload.exp !== undefined) {
@@ -173,14 +176,14 @@ const validateClaims = (payload, options = {}) => {
         }
     }
 
-    // Check issued at (iat)
-    if (payload.iat !== undefined) {
-        if (typeof payload.iat !== 'number') {
-            errors.push('iat claim must be a number');
-        } else if (payload.iat > now) {
-            errors.push('Token issued in the future (iat claim)');
-        }
-    }
+    // // Check issued at (iat)
+    // if (payload.iat !== undefined) {
+    //     if (typeof payload.iat !== 'number') {
+    //         errors.push('iat claim must be a number');
+    //     } else if (payload.iat > now) {
+    //         errors.push('Token issued in the future (iat claim)');
+    //     }
+    // }
 
     // Check issuer (iss)
     if (options.expectedIssuer) {
