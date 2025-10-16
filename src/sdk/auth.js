@@ -131,7 +131,9 @@ export class OCAuthCore {
         
         // Open in-app browser and wait for redirect
         console.log('🌐 [AUTH DEBUG] Opening WebBrowser.openAuthSessionAsync...');
-        const result = await WebBrowser.openAuthSessionAsync(requestUrl, this.redirectUri);
+        const result = await WebBrowser.openAuthSessionAsync(requestUrl, this.redirectUri, {
+            createTask: false
+        });
         
         console.log('📱 [AUTH DEBUG] WebBrowser result:', {
             type: result.type,
