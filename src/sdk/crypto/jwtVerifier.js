@@ -23,7 +23,7 @@ import { fetchJWKS, findKeyInJWKS } from './jwks';
 const decodeJWT = (token) => {
     const parts = token.split('.');
     if (parts.length !== 3) {
-        throw new Error('Invalid JWT format: must have 3 parts');
+        throw new Error('[OCID SDK | JWT Verifier] Invalid JWT format: must have 3 parts');
     }
 
     try {
@@ -34,7 +34,7 @@ const decodeJWT = (token) => {
 
         return { header, payload, signature, message: `${parts[0]}.${parts[1]}` };
     } catch (error) {
-        throw new Error(`Failed to decode JWT: ${error.message}`);
+        throw new Error(`[OCID SDK | JWT Verifier] Failed to decode JWT: ${error.message}`);
     }
 };
 
@@ -44,14 +44,7 @@ const decodeJWT = (token) => {
  * @returns {Object} Elliptic curve key object
  */
 const jwkToEllipticKey = (jwk) => {
-    console.log('[JWT Verifier] Converting JWK to elliptic key...');
-    console.log('[JWT Verifier] JWK details:', { 
-        kty: jwk.kty, 
-        crv: jwk.crv, 
-        kid: jwk.kid,
-        use: jwk.use,
-        alg: jwk.alg
-    });
+
 
     if (jwk.kty !== 'EC') {
         throw new Error(`Unsupported key type: ${jwk.kty}. Only EC (Elliptic Curve) is supported.`);
@@ -63,7 +56,6 @@ const jwkToEllipticKey = (jwk) => {
 
     try {
         // Decode base64url encoded x and y coordinates
-        console.log('[JWT Verifier] Decoding x and y coordinates...');
         const xBuffer = Buffer.from(base64UrlDecode(jwk.x), 'binary');
         const yBuffer = Buffer.from(base64UrlDecode(jwk.y), 'binary');
 
@@ -71,12 +63,6 @@ const jwkToEllipticKey = (jwk) => {
         const x = xBuffer.toString('hex');
         const y = yBuffer.toString('hex');
 
-        console.log('[JWT Verifier] Key coordinates (hex):', {
-            x: x.substring(0, 20) + '...',
-            y: y.substring(0, 20) + '...',
-            xLength: x.length,
-            yLength: y.length
-        });
 
         // Create elliptic curve instance
         const ec = new EC('p256');
@@ -87,10 +73,10 @@ const jwkToEllipticKey = (jwk) => {
             y: y
         }, 'hex');
 
-        console.log('[JWT Verifier] ✓ Elliptic key created successfully');
+        console.log('[OCID SDK | JWT Verifier] ✓ success');
         return key;
     } catch (error) {
-        console.error('[JWT Verifier] ✗ Failed to create elliptic key:', error.message);
+        console.error('[OCID SDK | JWT Verifier] ✗ Failed to create key:', error.message);
         throw error;
     }
 };
@@ -107,7 +93,6 @@ const verifySignature = async (message, signature, publicKey) => {
         
         // Hash the message using SHA-256
         const messageBuffer = Buffer.from(message, 'utf8');
-        console.log('[JWT Verifier] Hashing message with SHA-256...');
         const hash = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             message,
@@ -130,15 +115,15 @@ const verifySignature = async (message, signature, publicKey) => {
         const isValid = publicKey.verify(hash, { r, s });
 
         if (isValid) {
-            console.log('[JWT Verifier] ✓ Signature verification PASSED');
+            console.log('[OCID SDK | JWT Verifier] ✓ Signature verification PASSED');
         } else {
-            console.log('[JWT Verifier] ✗ Signature verification FAILED');
+            console.log('[OCID SDK | JWT Verifier] ✗ Signature verification FAILED');
         }
 
         return isValid;
     } catch (error) {
-        console.error('[JWT Verifier] ✗ Signature verification error:', error.message);
-        console.error('[JWT Verifier] Error stack:', error.stack);
+        console.error('[OCID SDK | JWT Verifier] ✗ Signature verification error:', error.message);
+        console.error('[OCID SDK | JWT Verifier] Error stack:', error.stack);
         return false;
     }
 };
@@ -152,9 +137,6 @@ const verifySignature = async (message, signature, publicKey) => {
 const validateClaims = (payload, options) => {
     const errors = [];
     const now = Math.floor(Date.now() / 1000);
-    console.log('[JWT Verifier] Validating claims...');
-    console.log('[JWT Verifier] Payload:', payload);
-    console.log('[JWT Verifier] Options:', options);
 
     // Check expiration (exp)
     if (payload.exp !== undefined) {
@@ -215,38 +197,31 @@ const validateClaims = (payload, options) => {
  */
 export const verifyJWT = async (idToken, jwksUrl, options = {}) => {
     console.log('═══════════════════════════════════════════════════════');
-    console.log('[JWT Verifier] Starting JWT verification process');
+    console.log('[OCID SDK | JWT Verifier] Starting JWT verification process');
     console.log('═══════════════════════════════════════════════════════');
     
     try {
         // Step 1: Decode the JWT
-        console.log('[JWT Verifier] STEP 1: Decoding JWT...');
         const { header, payload, signature, message } = decodeJWT(idToken);
 
-        console.log('[JWT Verifier] ✓ JWT decoded successfully');
 
         // Step 2: Check algorithm
-        console.log('[JWT Verifier] STEP 2: Checking algorithm...');
         if (header.alg !== 'ES256') {
             throw new Error(`Unsupported algorithm: ${header.alg}. Only ES256 is supported.`);
         }
 
         // Step 3: Fetch JWKS
-        console.log('[JWT Verifier] STEP 3: Fetching JWKS...');
         const jwks = await fetchJWKS(jwksUrl);
       
 
         // Step 4: Find the key with matching kid
-        console.log('[JWT Verifier] STEP 4: Finding matching key...');
 
         let jwk;
         if (header.kid) {
             jwk = findKeyInJWKS(jwks, header.kid);
             if (!jwk) {
-                console.error('[JWT Verifier] ✗ Key not found in JWKS');
                 throw new Error(`Key with kid "${header.kid}" not found in JWKS`);
             }
-            console.log('[JWT Verifier] ✓ Found matching key:', jwk.kid);
         } else {
             // If no kid in header, try the first key (fallback for some implementations)
             if (jwks.keys && jwks.keys.length > 0) {
@@ -257,34 +232,31 @@ export const verifyJWT = async (idToken, jwksUrl, options = {}) => {
         }
 
         // Step 5: Convert JWK to elliptic key
-        console.log('[JWT Verifier] STEP 5: Converting JWK to elliptic key...');
         const publicKey = jwkToEllipticKey(jwk);
 
         // Step 6: Verify signature
-        console.log('[JWT Verifier] STEP 6: Verifying cryptographic signature...');
         const signatureValid = await verifySignature(message, signature, publicKey);
         if (!signatureValid) {
-            console.error('[JWT Verifier] ✗ SIGNATURE VERIFICATION FAILED');
+            console.error('[OCID SDK | JWT Verifier] ✗ SIGNATURE VERIFICATION FAILED');
             throw new Error('JWT signature verification failed - token may be forged or tampered');
         }
 
-        console.log('[JWT Verifier] ✓✓✓ JWT SIGNATURE VERIFIED SUCCESSFULLY ✓✓✓');
+        console.log('[OCID SDK | JWT Verifier] ✓✓✓ JWT SIGNATURE VERIFIED SUCCESSFULLY ✓✓✓');
 
         // Step 7: Validate claims
-        console.log('[JWT Verifier] STEP 7: Validating JWT claims...');
         const claimsValidation = validateClaims(payload, {
             expectedIssuer: options.expectedIssuer,
             expectedAudience: options.expectedAudience
         });
 
         if (!claimsValidation.valid) {
-            console.error('[JWT Verifier] ✗ Claims validation failed:', claimsValidation.errors);
+            console.error('[OCID SDK | JWT Verifier] ✗ Claims validation failed:', claimsValidation.errors);
             throw new Error(`JWT claims validation failed: ${claimsValidation.errors.join(', ')}`);
         }
 
-        console.log('[JWT Verifier] ✓ JWT claims validated successfully');
+        console.log('[OCID SDK | JWT Verifier] ✓ JWT claims validated successfully');
         console.log('═══════════════════════════════════════════════════════');
-        console.log('[JWT Verifier] ✓✓✓ ALL VERIFICATION CHECKS PASSED ✓✓✓');
+        console.log('[OCID SDK | JWT Verifier] ✓✓✓ ALL VERIFICATION CHECKS PASSED ✓✓✓');
         console.log('═══════════════════════════════════════════════════════');
 
         return {
@@ -295,9 +267,9 @@ export const verifyJWT = async (idToken, jwksUrl, options = {}) => {
 
     } catch (error) {
         console.error('═══════════════════════════════════════════════════════');
-        console.error('[JWT Verifier] ✗✗✗ JWT VERIFICATION FAILED ✗✗✗');
-        console.error('[JWT Verifier] Error:', error.message);
-        console.error('[JWT Verifier] Stack:', error.stack);
+        console.error('[OCID SDK | JWT Verifier] ✗✗✗ JWT VERIFICATION FAILED ✗✗✗');
+        console.error('[OCID SDK | JWT Verifier] Error:', error.message);
+        console.error('[OCID SDK | JWT Verifier] Stack:', error.stack);
         console.error('═══════════════════════════════════════════════════════');
         return {
             valid: false,

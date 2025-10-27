@@ -57,18 +57,15 @@ const jwksCache = new JWKSCache();
  * @returns {Promise<Object>} The JWKS object
  */
 export const fetchJWKS = async (jwksUrl) => {
-    console.log('[JWKS Fetcher] ───────────────────────────────────────');
-    console.log('[JWKS Fetcher] Fetching JWKS from:', jwksUrl);
     
     // Check cache first
     const cached = jwksCache.get(jwksUrl);
     if (cached) {
-        console.log('[JWKS Fetcher] ✓ Using cached JWKS');
-        console.log('[JWKS Fetcher] ───────────────────────────────────────');
+        console.log('[OCID SDK | JWKS Fetcher] ✓ Using cached JWKS');
         return cached;
     }
 
-    console.log('[JWKS Fetcher] No cache found, fetching from server...');
+    console.log('[OCID SDK | JWKS Fetcher] No cache found, fetching from server...');
     
     try {
         const response = await fetch(jwksUrl, {
@@ -83,30 +80,27 @@ export const fetchJWKS = async (jwksUrl) => {
 
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`);
+            throw new Error(`[OCID SDK | JWKS Fetcher] Failed to fetch JWKS: ${response.status} ${response.statusText}`);
         }
 
         const jwks = await response.json();
 
         if (!jwks.keys || !Array.isArray(jwks.keys)) {
-            throw new Error('Invalid JWKS format: missing keys array');
+            throw new Error('[OCID SDK | JWKS Fetcher] Invalid JWKS format: missing keys array');
         }
 
-        console.log('[JWKS Fetcher] ✓ JWKS validated');
-        console.log('[JWKS Fetcher] Number of keys:', jwks.keys.length);
+        console.log('[OCID SDK | JWKS Fetcher] ✓ JWKS validated');
 
 
         // Cache the result
         jwksCache.set(jwksUrl, jwks);
-        console.log('[JWKS Fetcher] ✓ JWKS cached for 1 hour');
-        console.log('[JWKS Fetcher] ───────────────────────────────────────');
+            console.log('[OCID SDK | JWKS Fetcher] ✓ JWKS cached for 1 hour');
 
         return jwks;
     } catch (error) {
-        console.error('[JWKS Fetcher] ✗ Error fetching JWKS:', error.message);
-        console.error('[JWKS Fetcher] Error stack:', error.stack);
-        console.error('[JWKS Fetcher] ───────────────────────────────────────');
-        throw new Error(`Failed to fetch JWKS: ${error.message}`);
+        console.error('[OCID SDK | JWKS Fetcher] ✗ Error fetching JWKS:', error.message);
+        console.error('[OCID SDK | JWKS Fetcher] Error stack:', error.stack);
+        throw new Error(`[OCID SDK | JWKS Fetcher] Failed to fetch JWKS: ${error.message}`);
     }
 };
 

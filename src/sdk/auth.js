@@ -42,12 +42,12 @@ export class OCAuthCore {
         this.clientId = clientId;
         this.initialized = false;
         
-        console.log('🔧 [SDK DEBUG] OCAuth initialized with endpoints:');
-        console.log('🔧 [SDK DEBUG] - Client ID:', clientId);
-        console.log('🔧 [SDK DEBUG] - Login Endpoint:', loginEndpoint);
-        console.log('🔧 [SDK DEBUG] - Logout Endpoint:', logoutEndPoint);
-        console.log('🔧 [SDK DEBUG] - Redirect URI:', redirectUri);
-        console.log('🔧 [SDK DEBUG] - Referral Code:', referralCode || '(none)');
+        console.log('🔧 [OCID SDK DEBUG] OCAuth initialized with endpoints:');
+        console.log('🔧 [OCID SDK DEBUG] - Client ID:', clientId);
+        console.log('🔧 [OCID SDK DEBUG] - Login Endpoint:', loginEndpoint);
+        console.log('🔧 [OCID SDK DEBUG] - Logout Endpoint:', logoutEndPoint);
+        console.log('🔧 [OCID SDK DEBUG] - Redirect URI:', redirectUri);
+        console.log('🔧 [OCID SDK DEBUG] - Referral Code:', referralCode || '(none)');
     }
 
     async initialize() {
@@ -63,43 +63,21 @@ export class OCAuthCore {
     }
 
     async logout(logoutReturnTo, skipBrowserLogout = false) {
-        console.log('🚪 [LOGOUT DEBUG] ========== Starting Logout Flow ==========');
-        console.log('🚪 [LOGOUT DEBUG] Parameters:', {
-            logoutReturnTo: logoutReturnTo,
-            skipBrowserLogout: skipBrowserLogout
-        });
+
         
         // Clear local storage and auth state
-        console.log('🚪 [LOGOUT DEBUG] Clearing local storage (tokens, transaction data)...');
         await this.clearStorage();
-        console.log('✅ [LOGOUT DEBUG] Local storage cleared');
+        console.log('✅ [OCID SDK | LOGOUT DEBUG] Local storage cleared');
         
         // Clear auth info manager state to trigger UI updates
-        console.log('🚪 [LOGOUT DEBUG] Clearing auth info manager...');
+        console.log('🚪 [OCID SDK | LOGOUT DEBUG] Clearing auth info manager...');
         this.authInfoManager.clear();
-        console.log('✅ [LOGOUT DEBUG] Auth info manager cleared (UI will update)');
+        console.log('✅ [OCID SDK | LOGOUT DEBUG] Auth info manager cleared (UI will update)');
         
-        // IMPORTANT: We do NOT call the logout endpoint because:
-        // 1. expo-web-browser uses the OS-managed system browser (ASWebAuthenticationSession/Chrome Custom Tabs)
-        //    which we cannot programmatically clear without opening a browser window
-        // 2. The logout endpoint redirects to auth.staging.opencampus.xyz/login WITHOUT query params,
-        //    which is NOT a valid login page and causes confusion
-        // 3. Terminal 3's server session will expire naturally (typically 24h)
-        // 4. Next login starts fresh from api.login.sandbox.opencampus.xyz/login with new session anyway
-        // 5. We've already cleared all local tokens and state, so user is logged out from our perspective
-        
-        console.log('⏭️ [LOGOUT DEBUG] Skipping browser logout endpoint');
-        console.log('💡 [LOGOUT DEBUG] Local tokens cleared - user is logged out');
-        console.log('💡 [LOGOUT DEBUG] Terminal 3 session will expire naturally');
-        console.log('💡 [LOGOUT DEBUG] Next login will start fresh with new session');
-        
-        console.log('🎉 [LOGOUT DEBUG] ========== Logout Complete ==========');
-        console.log('📝 [LOGOUT DEBUG] Next login will start from:', this.loginEndPoint);
     }
 
     async signInWithRedirect(params) {
-        // we use ONLY code flow with PKCE, so lacks a lot of options
-        // available in other OAuth SDKs.
+
         const paramsClone = Object.assign({}, params);
         paramsClone.redirectUri = this.redirectUri;
         paramsClone.clientId = this.clientId;
@@ -108,87 +86,68 @@ export class OCAuthCore {
         await this.transactionManager.save(meta);
         signinParams.referralCode = this.referralCode;
         
-        // Add prompt=login if forceLogin is set (forces re-authentication)
         if (params.forceLogin) {
             signinParams.prompt = 'login';
         }
         
         const requestUrl = buildAuthEndpointUrl(signinParams, this.loginEndPoint);
         
-        console.log('🚀 [AUTH DEBUG] ========== Starting Authentication Flow ==========');
-        console.log('🔗 [AUTH DEBUG] Initial Auth URL:', requestUrl);
-        console.log('📋 [AUTH DEBUG] Auth Parameters:', {
-            clientId: signinParams.clientId,
-            redirectUri: signinParams.redirectUri,
-            responseType: signinParams.responseType,
-            scope: signinParams.scope,
-            codeChallenge: signinParams.codeChallenge?.substring(0, 20) + '...',
-            codeChallengeMethod: signinParams.codeChallengeMethod,
-            state: signinParams.state,
-            prompt: signinParams.prompt,
-            referralCode: signinParams.referralCode
-        });
         
         // Open in-app browser and wait for redirect
-        console.log('🌐 [AUTH DEBUG] Opening WebBrowser.openAuthSessionAsync...');
+        console.log('🌐 [OCID SDK | AUTH DEBUG] Opening WebBrowser.openAuthSessionAsync...');
         const result = await WebBrowser.openAuthSessionAsync(requestUrl, this.redirectUri, {
             createTask: false
         });
         
-        console.log('📱 [AUTH DEBUG] WebBrowser result:', {
+        console.log('📱 [OCID SDK | AUTH DEBUG] WebBrowser result:', {
             type: result.type,
             url: result.url
         });
         
         if (result.type === 'success' && result.url) {
-            console.log('✅ [AUTH DEBUG] Auth browser returned success');
-            console.log('🔙 [AUTH DEBUG] Redirect URL received:', result.url);
+            console.log('✅ [OCID SDK | AUTH DEBUG] Auth browser returned success');
+            console.log('🔙 [OCID SDK | AUTH DEBUG] Redirect URL received:', result.url);
             // Handle the callback directly
             return await this.handleLoginRedirect(result.url);
         } else if (result.type === 'cancel') {
-            console.log('❌ [AUTH DEBUG] User cancelled authentication');
+            console.log('❌ [OCID SDK | AUTH DEBUG] User cancelled authentication');
             throw new AuthError('Authentication was cancelled');
         } else {
-            console.log('❌ [AUTH DEBUG] Authentication failed with type:', result.type);
+            console.log('❌ [OCID SDK | AUTH DEBUG] Authentication failed with type:', result.type);
             throw new AuthError('Authentication failed');
         }
     }
 
     async handleLoginRedirect(url) {
-        console.log('🔄 [AUTH DEBUG] ========== Handling Login Redirect ==========');
-        console.log('🔙 [AUTH DEBUG] Full redirect URL:', url);
+        console.log('🔄 [OCID SDK | AUTH DEBUG] ========== Handling Login Redirect ==========');
+        console.log('🔙 [OCID SDK | AUTH DEBUG] Full redirect URL:', url);
         
         // For React Native, URL will be passed from deep link handler
         const urlParams = this.parseUrlFromString(url);
-        console.log('📋 [AUTH DEBUG] Parsed URL params:', urlParams);
         
         // Again we only handle PKCE code flow
         if (urlParams.code) {
-            console.log('✅ [AUTH DEBUG] Authorization code received:', urlParams.code?.substring(0, 20) + '...');
             
             const meta = await this.transactionManager.getTransactionMeta();
-            console.log('🔐 [AUTH DEBUG] Retrieved transaction meta from storage');
             
             const { codeVerifier } = meta;
             if (codeVerifier) {
-                console.log('🔑 [AUTH DEBUG] Code verifier found, exchanging code for tokens...');
-                console.log('🔑 [AUTH DEBUG] Code verifier (first 20 chars):', codeVerifier?.substring(0, 20) + '...');
                 
                 // we used pkce mode, use it
                 await this.tokenManager.exchangeTokenFromCode(urlParams.code, codeVerifier, urlParams.state);
-                console.log('✅ [AUTH DEBUG] Token exchange successful');
+                console.log('✅ [OCID SDK | AUTH DEBUG] Token exchange successful');
                 
                 // clear transaction meta, coz it's completed
                 await this.transactionManager.clear();
                 await this.syncAuthInfo();
                 
                 const authState = await this.getAuthState();
-                console.log('✅ [AUTH DEBUG] Auth state synced:', {
+                console.log('✅ [OCID SDK | AUTH DEBUG] Auth state synced:', {
                     isAuthenticated: authState.isAuthenticated,
                     OCId: authState.OCId,
                     ethAddress: authState.ethAddress
                 });
-                console.log('🎉 [AUTH DEBUG] ========== Authentication Complete ==========');
+                console.log('🎉 [OCID SDK | AUTH DEBUG] ========== Authentication Complete ==========');
                 
                 return authState;
             } else {

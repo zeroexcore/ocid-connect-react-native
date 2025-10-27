@@ -19,17 +19,16 @@ import { verifyJWT } from './jwtVerifier';
  */
 export const verifyToken = async (idToken, jwksUrl, options = {}) => {
     try {
-        console.log('Verifying token with JWKS URL:', jwksUrl);
         
         const result = await verifyJWT(idToken, jwksUrl, options);
         
         if (!result.valid) {
-            console.error('Token verification failed:', result.error);
+            console.error('[OCID SDK | Verify Token] Token verification failed:', result.error);
             return false;
         }
         
-        console.log('✓ Token verified successfully');
-        console.log('Token payload:', {
+        console.log('[OCID SDK | Verify Token] ✓ Token verified successfully');
+        console.log('[OCID SDK | Verify Token] Token payload:', {
             user_id: result.payload.user_id,
             eth_address: result.payload.eth_address,
             edu_username: result.payload.edu_username,
