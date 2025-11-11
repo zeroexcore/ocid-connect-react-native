@@ -34,6 +34,11 @@ export const buildAuthEndpointUrl = (signInParams, loginEndPoint) => {
         loginUrl.searchParams.append('ref', signInParams.referralCode);
     }
 
+    // email placeholder for pre-filling email field
+    if (signInParams.emailPlaceholder) {
+        loginUrl.searchParams.append('emailPlaceholder', signInParams.emailPlaceholder);
+    }
+
     // prompt parameter for forcing re-authentication
     if (signInParams.prompt) {
         loginUrl.searchParams.append('prompt', signInParams.prompt);

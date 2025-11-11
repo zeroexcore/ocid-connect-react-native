@@ -77,6 +77,9 @@ export class OCAuthCore {
     }
 
     async signInWithRedirect(params) {
+        console.log('🔐 [OCID SDK | SIGNIN] ========================================');
+        console.log('🔐 [OCID SDK | SIGNIN] Starting signInWithRedirect');
+        console.log('🔐 [OCID SDK | SIGNIN] Input params:', JSON.stringify(params, null, 2));
 
         const paramsClone = Object.assign({}, params);
         paramsClone.redirectUri = this.redirectUri;
@@ -85,6 +88,10 @@ export class OCAuthCore {
         const meta = createPkceMeta(signinParams);
         await this.transactionManager.save(meta);
         signinParams.referralCode = this.referralCode;
+        signinParams.emailPlaceholder = paramsClone.emailPlaceholder;
+        
+        console.log('📧 [OCID SDK | SIGNIN] Email Placeholder:', signinParams.emailPlaceholder || '(not provided)');
+        console.log('🔗 [OCID SDK | SIGNIN] Referral Code:', signinParams.referralCode || '(not provided)');
         
         if (params.forceLogin) {
             signinParams.prompt = 'login';
@@ -92,6 +99,8 @@ export class OCAuthCore {
         
         const requestUrl = buildAuthEndpointUrl(signinParams, this.loginEndPoint);
         
+        console.log('🌐 [OCID SDK | SIGNIN] Full Request URL:', requestUrl);
+        console.log('🔐 [OCID SDK | SIGNIN] ========================================');
         
         // Open in-app browser and wait for redirect
         console.log('🌐 [OCID SDK | AUTH DEBUG] Opening WebBrowser.openAuthSessionAsync...');
@@ -249,6 +258,10 @@ const JWKS_LIVE_URL = 'https://static.opencampus.xyz/jwks/jwks-live.json';
 const JWKS_SANDBOX_URL = 'https://static.opencampus.xyz/jwks/jwks-sandbox.json';
 export class OCAuthLive extends OCAuthCore {
     constructor(opts = {}) {
+        console.log('🚀 [OCID SDK] ========================================');
+        console.log('🚀 [OCID SDK] Initializing LIVE/PRODUCTION SDK');
+        console.log('🚀 [OCID SDK] ========================================');
+        
         const {
             tokenEndPoint: overrideTokenEndpoint,
             loginEndPoint: overrideLoginEndpoint,
@@ -267,11 +280,17 @@ export class OCAuthLive extends OCAuthCore {
         const pkceTransactionManager = new TransactionManager(storageClass);
         const tokenManager = new TokenManager(storageClass, tokenEndpoint, jwksUrl, clientId);
         super(clientId, loginEndpoint, redirectUri, pkceTransactionManager, tokenManager, referralCode, logoutEndpoint);
+        
+        console.log('✅ [OCID SDK] LIVE/PRODUCTION SDK initialized successfully');
     }
 }
 
 export class OCAuthSandbox extends OCAuthCore {
     constructor(opts = {}) {
+        console.log('🧪 [OCID SDK] ========================================');
+        console.log('🧪 [OCID SDK] Initializing SANDBOX SDK');
+        console.log('🧪 [OCID SDK] ========================================');
+        
         const {
             tokenEndPoint: overrideTokenEndpoint,
             loginEndPoint: overrideLoginEndpoint,
@@ -290,5 +309,7 @@ export class OCAuthSandbox extends OCAuthCore {
         const pkceTransactionManager = new TransactionManager(storageClass);
         const tokenManager = new TokenManager(storageClass, tokenEndpoint, jwksUrl, clientId);
         super(clientId, loginEndpoint, redirectUri, pkceTransactionManager, tokenManager, referralCode, logoutEndpoint);
+        
+        console.log('✅ [OCID SDK] SANDBOX SDK initialized successfully');
     }
 }

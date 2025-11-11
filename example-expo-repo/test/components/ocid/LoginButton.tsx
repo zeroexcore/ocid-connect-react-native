@@ -39,16 +39,17 @@ interface LoginButtonProps {
     disabled?: boolean;
     theme?: keyof typeof themes;
     state?: string;
+    emailPlaceholder?: string;
 }
 
-export default function LoginButton({ pill, disabled, theme = 'ocBlue', state }: LoginButtonProps) {
+export default function LoginButton({ pill, disabled, theme = 'ocBlue', state, emailPlaceholder }: LoginButtonProps) {
     const { ocAuth } = useOCAuth();
     const selectedTheme = themes[theme] || themes.ocBlue;
 
     const loginWithRedirect = async () => {
         if (ocAuth) {
             try {
-                await ocAuth.signInWithRedirect({ state });
+                await ocAuth.signInWithRedirect({ state, emailPlaceholder });
             } catch (error: any) {
                 if (error.message.includes('SANDBOX_VERIFICATION_REQUIRED')) {
                     // Handle sandbox verification error gracefully

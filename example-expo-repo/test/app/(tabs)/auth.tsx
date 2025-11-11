@@ -82,6 +82,7 @@ function AuthContent() {
                 pill={true}
                 disabled={false}
                 state={JSON.stringify({ timestamp: Date.now() })}
+                emailPlaceholder='dappcodinglab@gmail.com'
               />
             </View>
 

@@ -238,16 +238,17 @@ interface LoginButtonProps {
     disabled?: boolean;
     theme?: keyof typeof themes;
     state?: string;
+    emailPlaceholder?: string;
 }
 
-export default function LoginButton({ pill, disabled, theme = 'ocBlue', state }: LoginButtonProps) {
+export default function LoginButton({ pill, disabled, theme = 'ocBlue', state, emailPlaceholder }: LoginButtonProps) {
     const { ocAuth } = useOCAuth();
     const selectedTheme = themes[theme] || themes.ocBlue;
 
     const loginWithRedirect = async () => {
         if (ocAuth) {
             try {
-                await ocAuth.signInWithRedirect({ state });
+                await ocAuth.signInWithRedirect({ state, emailPlaceholder });
             } catch (error: any) {
                 if (error.message.includes('SANDBOX_VERIFICATION_REQUIRED')) {
                     // Handle sandbox verification error gracefully
@@ -464,6 +465,47 @@ export { default as OCSpinner } from './OCSpinner';
 export { OCContext, useOCAuth } from './OCContext';
 ```
 
+## API Reference
+
+### OCAuth Methods
+
+| Method | Description |
+| --- | --- |
+| `signInWithRedirect` | Initialize login process. Accepts `state` & `emailPlaceholder` as optional inputs |
+| `handleLoginRedirect` | Return the auth state of the login process |
+| `getAuthState` | Return auth state data { accessToken, idToken, OCId, ethAddress, isAuthenticated } |
+| `logout` | Clear authentication state and log out the user |
+
+#### signInWithRedirect Options
+
+```typescript
+await ocAuth.signInWithRedirect({
+  state: 'your-custom-state',           // Optional: Custom state parameter
+  emailPlaceholder: 'user@example.com'  // Optional: Pre-fill email in login form
+});
+```
+
+### LoginButton Props
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `pill` | `boolean` | `false` | Use pill-shaped button style |
+| `disabled` | `boolean` | `false` | Disable the button |
+| `theme` | `'light' \| 'dark' \| 'neutral' \| 'ocBlue'` | `'ocBlue'` | Button color theme |
+| `state` | `string` | `undefined` | Custom state to pass to auth flow |
+| `emailPlaceholder` | `string` | `undefined` | Pre-fill email address in login form |
+
+Example with email placeholder:
+
+```typescript
+<LoginButton
+  theme="ocBlue"
+  pill={true}
+  state={JSON.stringify({ timestamp: Date.now() })}
+  emailPlaceholder='user@example.com'
+/>
+```
+
 ## Authentication Flow
 
 ### 1. App Root Setup
@@ -567,6 +609,7 @@ function AuthContent() {
                 pill={true}
                 disabled={false}
                 state={JSON.stringify({ timestamp: Date.now() })}
+                emailPlaceholder='test@test.com'
               />
             </View>
           </View>
